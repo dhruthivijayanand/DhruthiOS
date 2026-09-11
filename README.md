@@ -37,5 +37,23 @@ linking, bootability, or complete kernel toolchain readiness.
 
 ## Sources
 
+## Second exercise: verify ELF linking
+
+From the same repository directory in PowerShell:
+
+```powershell
+& 'D:\Program Files\LLVM\bin\ld.lld.exe' --entry=answer -o build/link-probe.elf build/probe.o
+& 'D:\Program Files\LLVM\bin\llvm-readobj.exe' --file-headers build/link-probe.elf
+```
+
+Expected: `Format: elf64-x86-64` and `Type: Executable (0x2)`.
+`--entry=answer` sets the ELF entry address to the address of that symbol.
+This is only a linker-format probe. It has no boot-protocol integration or
+startup environment. Its function returns and needs a valid caller. Do not
+execute or boot this file. Its default linker layout is not our kernel layout.
+The future kernel needs a deliberate entry routine, layout, and boot contract.
+
+## References
+
 - [Clang cross-compilation](https://clang.llvm.org/docs/CrossCompilation.html)
 - [Clang freestanding builds](https://clang.llvm.org/docs/UsersManual.html#freestanding-builds)
