@@ -4,8 +4,60 @@ An educational x86-64 kernel project, developed incrementally with a four-day sc
 
 ## Current status
 
-Only a compiler target probe exists. There is no bootable kernel yet.
-Boot, interrupts, memory allocation, and a bounded kernel shell are PLANNED.
+IMPLEMENTED and tested in QEMU: UEFI/Limine boot, freestanding C entry with
+inline x86-64 Assembly, boot-revision check, and polled serial output.
+Interrupt handling, memory allocation, and a bounded kernel shell are PLANNED.
+There is no user space, scheduler, filesystem, networking, or meaningful C++
+component yet. The kernel prints two lines and enters a halt loop.
+
+## Build and run the kernel
+
+From this repository directory in PowerShell:
+
+```powershell
+& ./scripts/build.ps1
+& ./scripts/run.ps1
+```
+
+Expected terminal output after firmware messages:
+
+```text
+DhruthiOS: kernel entered
+DhruthiOS: boot protocol accepted; CPU halted
+```
+
+Quit QEMU with Ctrl+A, release, then X. Stop QEMU before rebuilding.
+The run script uses one CPU, 128 MiB RAM, TCG emulation, bundled UEFI firmware,
+and a project-directory virtual FAT disk with temporary guest writes.
+
+Verified tools: Clang/LLD 23.1.1 at `D:\Program Files\LLVM\bin`, QEMU 11.1.0 at
+`C:\Program Files\qemu`, Limine 12.5.2 included with its upstream license in
+vendor/limine. Build/run scripts accept alternate tool directories as parameters.
+
+Architecture: QEMU PC -> UEFI firmware -> Limine -> C kmain -> serial output.
+The kernel uses Limine's initial stack and page tables; we did not implement
+those mechanisms or a bootloader. The serial device is polled with bounded
+attempts; there is no interrupt-based output or exception recovery yet.
+
+Read [the boot milestone walkthrough](docs/boot-process.md) for all eleven steps,
+source explanations, exact commands, debugging evidence, and references.
+
+## Verification
+
+```powershell
+& ./scripts/test-boot.ps1
+```
+
+Three fresh boots passed with 128, 256, and 128 MiB RAM. The interactive run script
+also printed the two markers and exited successfully with Ctrl+A then X. ELF
+inspection showed an x86-64 executable with entry 0xffffffff80001000, separate
+RW/RX/R loadable segments, and no unresolved symbols. See docs/development-log.md.
+
+Limitations: emulator-only testing; no real-hardware validation, negative UART
+tests, fault handlers, memory isolation, or independent halted-state measurement.
+The current image is a directory-backed QEMU boot setup, not a standalone ISO.
+Future milestones: explain and extend diagnostics, then exceptions and timer
+interrupts, then physical memory allocation and the bounded shell.
 
 ## First exercise: compile a C function
 
@@ -34,8 +86,6 @@ The compiler should exit successfully. The inspector should report
 These are probe flags, not the complete future kernel build configuration.
 This check verifies object generation and its target format, not execution,
 linking, bootability, or complete kernel toolchain readiness.
-
-## Sources
 
 ## Second exercise: verify ELF linking
 

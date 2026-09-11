@@ -38,7 +38,8 @@ The observed entry address was `0x201120`; this is a result of this test's
 default linker layout, not a required or chosen kernel address.
 
 Result: ELF link-format probe IMPLEMENTED and verified. It was not executed.
-The learner has not yet reproduced this linking step.
+The learner reproduced this linking step and supplied the matching executable
+header and entry address.
 This probe is not bootable: setting an ELF entry field does not supply a boot
 protocol, a stack, a valid caller for a returning function, or kernel startup.
 
@@ -46,3 +47,45 @@ DOCUMENT THIS: linking changes the file from relocatable object to executable;
 an executable format alone does not establish a valid execution environment.
 DO NOT BOTHER DOCUMENTING THIS: memorizing the default entry address.
 INTERVIEW-WORTHY: why ELF executable does not mean bootable operating system.
+
+## 2026-09-11 — First kernel boot
+
+Changed: added real nonreturning C kernel entry, Limine revision-6 markers,
+polled COM1 output, inline architecture operations, explicit ELF layout,
+boot configuration, and PowerShell build/run/test scripts. C++ is still planned.
+
+Dependency: user downloaded Limine 12.5.2; archive and loader hashes plus the
+upstream license are retained in vendor/limine. No upstream signature check was
+performed. Native network download was blocked, so the user supplied the archive.
+
+Decision: use QEMU's bundled UEFI firmware and directory-backed virtual FAT disk.
+This supersedes the provisional BIOS-first recommendation and avoids requiring
+a separate native Windows ISO builder. No host boot configuration was modified.
+
+Actual failure: the first QEMU launch exited with `Block node is read-only`.
+Layer: virtual disk configuration, before firmware or kernel execution.
+Hypothesis: the default disk device needed a writable top-level block node.
+Diagnostic/fix: retain read-only FAT backing, add snapshot=on to the disk drive
+and remove top-level readonly=on for that drive. Keep firmware read-only.
+Result: firmware found Limine, which loaded the unchanged kernel successfully.
+
+Verified by the assistant:
+- Compile and link exited 0 without diagnostics.
+- ELF has entry 0xffffffff80001000, three PT_LOAD segments (RW, RX, R),
+  each aligned to 4096 bytes. These are virtual mappings, not observed RAM placement.
+- llvm-nm --undefined-only reported no undefined symbols.
+- First successful serial log contains both kernel markers; QEMU stderr was empty.
+- scripts/test-boot.ps1 exited 0: three fresh boots passed at 128/256/128 MiB.
+- Actual scripts/run.ps1 terminal run printed both markers; Ctrl+A then X exited
+  QEMU successfully with exit code 0. All assistant-started test VMs were stopped.
+- Tested kernel SHA-256:
+  DDA7DEE63C79715AFC13EA905278529568CEA5DC055E64BAE0A9301F22C40D3F
+
+Status: first boot and serial-output milestone IMPLEMENTED for the tested QEMU
+configuration. User reproduction and source walkthrough are still pending.
+No CPU halted-state inspection, UART failure injection, real-hardware test,
+interrupt handling, heap, paging implementation, or protection boundary is claimed.
+
+DOCUMENT THIS: boot contract, actual root-cause fix, explicit scope and evidence.
+DO NOT BOTHER DOCUMENTING THIS: every duplicate successful run or protocol number.
+INTERVIEW-WORTHY: why return is invalid at kernel entry; which work Limine performs.
