@@ -1,5 +1,9 @@
 # DhruthiOS collaboration
 
+Use DhruthiOS as the project name. Do not brand or describe it as a four-day OS
+project in the README, repository description, or portfolio material. Schedule
+constraints are for planning, not the project's public identity.
+
 The user is learning low-level programming. Explain each significant component
 before implementation, keep instructions small and actionable, and preserve
 the last verified working kernel. Do not make quiz answers a gate when the user

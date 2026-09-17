@@ -1,6 +1,6 @@
 # DhruthiOS
 
-An educational x86-64 kernel project, developed incrementally with a four-day scope.
+An educational x86-64 operating-system kernel built with C and Assembly, tested in QEMU.
 
 ## Current status
 

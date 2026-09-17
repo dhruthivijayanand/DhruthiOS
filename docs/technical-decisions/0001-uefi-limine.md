@@ -1,6 +1,6 @@
 # Decision: existing Limine with QEMU UEFI for the first boot
 
-Context: Windows host, four-day beginner project, native LLVM available, no WSL
+Context: Windows host, beginner kernel project with limited development time, native LLVM available, no WSL
 or native ISO builder discovered. QEMU includes x86-64 UEFI firmware.
 
 Alternatives: BIOS-first Limine ISO; install Unix build tools; custom loader;
