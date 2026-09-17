@@ -29,8 +29,10 @@ try {
                 if (Test-Path -LiteralPath $log) {
                     $contents = Get-Content -LiteralPath $log -Raw
                     if ($contents -and $contents.Contains('DhruthiOS: kernel entered') -and
+                        $contents.Contains('DhruthiOS: IDT loaded') -and
                         $contents.Contains('DhruthiOS: boot protocol accepted; CPU halted') -and
-                        !$contents.Contains('DhruthiOS: unsupported')) {
+                        !$contents.Contains('DhruthiOS: unsupported') -and
+                        !$contents.Contains('PANIC:') -and !$contents.Contains('FAIL:')) {
                         $passed = $true
                         break
                     }
@@ -43,6 +45,6 @@ try {
             $process.Dispose()
         }
         if (!$passed -or $stderr) { throw "Boot $run failed. Log: $log. QEMU stderr: $stderr" }
-        Write-Output "PASS: boot $run, RAM $ram, both kernel markers received. Log: $log"
+        Write-Output "PASS: boot $run, RAM $ram, IDT loaded and normal boot markers received. Log: $log"
     }
 } finally { Pop-Location }

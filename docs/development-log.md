@@ -105,3 +105,32 @@ tests that stop their own VM while this terminal behavior remains unresolved.
 The user requested GitHub setup and ongoing milestone uploads. Saved that workflow
 in AGENTS.md and docs/github.md. Remote creation and upload are pending; available
 connector tools cannot create a repository, and local credential lookup failed.
+
+## 2026-09-17 — Fatal invalid-opcode exception milestone
+
+Added a C IDT builder and Assembly fatal entry stubs. The #UD stub passes saved
+RIP to a C diagnostic. Other gates use a generic fatal handler that is untested.
+No returning interrupt handlers, exception recovery, IST or device IRQs exist yet.
+
+The deliberate UD2 build lives under build/ud2, separate from normal boot files.
+Its test compares the saved RIP against the ELF's UD2 symbol and independently
+checks vector 6 and the same address in QEMU's CPU trace. It stops its own VM.
+
+Verified by the assistant:
+- C/Assembly compilation and ELF linking succeed with warnings treated as errors.
+- No undefined symbols reported in either normal or exception-test ELF.
+- #UD test passed at 128/256 MiB; saved RIP was 0xffffffff800013e2.
+- No failure/normal-completion marker, stderr, early exit, timeout or triple fault.
+- Logs: build/ud2/test-f98b4a1890b04c26ab8d22881dcf4b24.
+- Updated normal build passed three boots at 128/256/128 MiB with IDT marker.
+- Normal logs: build/test-7e07acc9be7a4923adedcb936bf248f9.
+- Assembly disassembly confirms UD2 and the intended frame-to-C entry instructions.
+
+User reproduction of this new exception test is pending. General exceptions
+remain PARTIALLY IMPLEMENTED; fallback, error-code exceptions, NMI and nested
+faults are UNTESTED. Existing GitHub setup limitation remains unchanged.
+
+DOCUMENT THIS: fatal-only scope, Assembly/C boundary, actual fault-address evidence.
+DO NOT BOTHER DOCUMENTING THIS: memorizing linked instruction addresses.
+INTERVIEW-WORTHY: why CLI does not prevent exceptions and why returning IRQs need
+register preservation and an interrupt-return path.

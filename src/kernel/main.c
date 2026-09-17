@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include "exceptions.h"
 
 /* Limine protocol markers and base revision, from the protocol specification.
  * The linker preserves these arrays in this order. They are not CPU opcodes. */
@@ -63,6 +64,25 @@ static bool serial_write(const char *text)
     return true;
 }
 
+_Noreturn void exception_panic_ud(uint64_t rip)
+{
+    static const char digits[] = "0123456789abcdef";
+    char address[19] = "0x0000000000000000";
+    for (unsigned i = 0; i < 16; ++i) {
+        address[17 - i] = digits[(rip >> (i * 4)) & 0xf];
+    }
+    (void)serial_write("PANIC: #UD invalid opcode (vector 6)\r\nRIP: ");
+    (void)serial_write(address);
+    (void)serial_write("\r\nDhruthiOS: exception handler reached; halting\r\n");
+    halt_forever();
+}
+
+_Noreturn void exception_panic_unhandled(void)
+{
+    (void)serial_write("PANIC: unhandled exception or interrupt; halting\r\n");
+    halt_forever();
+}
+
 _Noreturn void kmain(void)
 {
     serial_init();
@@ -73,6 +93,14 @@ _Noreturn void kmain(void)
     if (!serial_write("DhruthiOS: kernel entered\r\n")) {
         halt_forever();
     }
+    exceptions_init();
+    (void)serial_write("DhruthiOS: IDT loaded\r\n");
+#ifdef DHRUTHIOS_TEST_UD2
+    (void)serial_write("TEST: triggering UD2\r\n");
+    exception_test_ud();
+    (void)serial_write("FAIL: UD2 returned unexpectedly\r\n");
+    halt_forever();
+#endif
     (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
     halt_forever();
 }

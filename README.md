@@ -5,10 +5,12 @@ An educational x86-64 kernel project, developed incrementally with a four-day sc
 ## Current status
 
 IMPLEMENTED and tested in QEMU: UEFI/Limine boot, freestanding C entry with
-inline x86-64 Assembly, boot-revision check, and polled serial output.
-Interrupt handling, memory allocation, and a bounded kernel shell are PLANNED.
+inline x86-64 Assembly, boot-revision check, polled serial output and fatal #UD
+reporting with a verified instruction address. General exception infrastructure
+is PARTIALLY IMPLEMENTED; other vectors use an UNTESTED generic fatal fallback.
+Device interrupts, memory allocation, and a bounded kernel shell are PLANNED.
 There is no user space, scheduler, filesystem, networking, or meaningful C++
-component yet. The kernel prints two lines and enters a halt loop.
+component yet. Normal boot installs an IDT, prints status and enters a halt loop.
 
 ## Build and run the kernel
 
@@ -23,6 +25,7 @@ Expected terminal output after firmware messages:
 
 ```text
 DhruthiOS: kernel entered
+DhruthiOS: IDT loaded
 DhruthiOS: boot protocol accepted; CPU halted
 ```
 
@@ -44,20 +47,33 @@ source explanations, exact commands, debugging evidence, and references.
 
 ## Verification
 
+Run the exception test (builds a separate test image and closes QEMU automatically):
+
 ```powershell
+& ./scripts/test-exception.ps1
+```
+
+Expected: two PASS lines confirming #UD and its fault address, at 128/256 MiB RAM.
+The script checks QEMU's exception trace as well as kernel serial output.
+See [the exception walkthrough](docs/interrupts.md) for source and all eleven steps.
+
+Rebuild and test normal boot:
+
+```powershell
+& ./scripts/build.ps1
 & ./scripts/test-boot.ps1
 ```
 
 Three fresh boots passed with 128, 256, and 128 MiB RAM. The interactive run script
 also printed the two markers and exited successfully with Ctrl+A then X. ELF
-inspection showed an x86-64 executable with entry 0xffffffff80001000, separate
+inspection at the first boot milestone showed entry 0xffffffff80001000, separate
 RW/RX/R loadable segments, and no unresolved symbols. See docs/development-log.md.
 
 Limitations: emulator-only testing; no real-hardware validation, negative UART
-tests, fault handlers, memory isolation, or independent halted-state measurement.
+tests, comprehensive fault recovery, memory isolation, or independent halted-state measurement.
 The current image is a directory-backed QEMU boot setup, not a standalone ISO.
-Future milestones: explain and extend diagnostics, then exceptions and timer
-interrupts, then physical memory allocation and the bounded shell.
+Future milestones: extend exception diagnostics and add timer interrupts, then
+physical memory allocation and the bounded shell.
 
 ## First exercise: compile a C function
 
