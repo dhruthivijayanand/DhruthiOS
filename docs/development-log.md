@@ -106,6 +106,18 @@ The user requested GitHub setup and ongoing milestone uploads. Saved that workfl
 in AGENTS.md and docs/github.md. Remote creation and upload are pending; available
 connector tools cannot create a repository, and local credential lookup failed.
 
+### GitHub remote supplied
+
+The user supplied https://github.com/dhruthivijayanand/DhruthiOS.git. Configured
+origin to that exact URL. The current local history includes exception milestone
+92b1529. No implementation changes were made during remote setup.
+
+Upload remains pending: connector repository lookup returned 404 and shell Git
+could not use the Windows credential store. A network-enabled connection reached
+credential handling with a command-scoped OpenSSL backend; certificate checking
+remained enabled. Prepared the ordinary `git push -u origin main` command for the
+user's own terminal, where interactive sign-in can occur. No push success claimed.
+
 ## 2026-09-17 — Fatal invalid-opcode exception milestone
 
 Added a C IDT builder and Assembly fatal entry stubs. The #UD stub passes saved
