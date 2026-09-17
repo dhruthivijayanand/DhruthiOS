@@ -82,10 +82,26 @@ Verified by the assistant:
   DDA7DEE63C79715AFC13EA905278529568CEA5DC055E64BAE0A9301F22C40D3F
 
 Status: first boot and serial-output milestone IMPLEMENTED for the tested QEMU
-configuration. User reproduction and source walkthrough are still pending.
+configuration. The user subsequently reproduced the interactive boot and supplied
+three passing automated runs at 128/256/128 MiB. A source walkthrough has begun.
 No CPU halted-state inspection, UART failure injection, real-hardware test,
 interrupt handling, heap, paging implementation, or protection boundary is claimed.
 
 DOCUMENT THIS: boot contract, actual root-cause fix, explicit scope and evidence.
 DO NOT BOTHER DOCUMENTING THIS: every duplicate successful run or protocol number.
 INTERVIEW-WORTHY: why return is invalid at kernel entry; which work Limine performs.
+
+## 2026-09-17 — Resume and GitHub preparation
+
+Resumed at e9b567c with a clean working tree. One fresh 128 MiB automated boot
+passed and the test stopped QEMU. No exception-handler code has been added yet.
+
+User-side setup lessons from the prior session: Windows PowerShell initially
+blocked local scripts; session-scoped RemoteSigned was suggested and the user
+then successfully built and booted. Interactive QEMU exit shortcuts did not work
+in the user's terminal; the user ended QEMU through Task Manager. Prefer bounded
+tests that stop their own VM while this terminal behavior remains unresolved.
+
+The user requested GitHub setup and ongoing milestone uploads. Saved that workflow
+in AGENTS.md and docs/github.md. Remote creation and upload are pending; available
+connector tools cannot create a repository, and local credential lookup failed.
