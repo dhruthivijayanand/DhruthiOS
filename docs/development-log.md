@@ -1,99 +1,69 @@
 # Development log
 
-## 2026-09-11 — Compiler target probe
+## 2026-09-11: toolchain and first boot
 
-Problem: the installed Clang defaults to a Windows target. The kernel needs an
-explicit bare-metal target rather than ordinary Windows object files.
+The initial compiler check produced an ELF64 relocatable object for
+`x86_64-unknown-none-elf`. Linking it with `answer` as the entry symbol produced
+an executable ELF, but it was only a format check: the function required a caller
+and was never run as a kernel.
 
-Decision: use `x86_64-unknown-none-elf` with freestanding C for a minimal probe.
+The first boot image added the Limine revision handshake, a fixed higher-half
+layout, a nonreturning C entry, and polled COM1 output. Limine supplies the stack
+and page tables. The loader binary and license were pinned in `vendor/limine`.
 
-Verification results:
-- QEMU version command succeeds: 11.1.0 (v11.1.0-12130-ge470268ff4).
-- Clang and LLD version commands succeed: 23.1.1.
-- Clang compiled `tests/toolchain/probe.c` with exit code 0 and no diagnostics.
-- `llvm-readobj --file-headers build/probe.o` succeeded and reported:
-  `Format: elf64-x86-64`, `Arch: x86_64`, `AddressSize: 64bit`,
-  `Type: Relocatable (0x1)`, and `Machine: EM_X86_64 (0x3E)`.
+The first QEMU launch failed with `Block node is read-only`, before kernel
+execution. Adding a snapshot layer to the virtual FAT drive fixed the disk
+configuration without changing the kernel. Three subsequent boots passed at
+128/256/128 MiB. An interactive terminal run also reached the completion marker.
 
-Result: compiler object-generation probe IMPLEMENTED and verified.
-The function has not been executed. Kernel linking and boot remain PLANNED.
-Repeat compilation produced matching ELF headers and disassembly.
+## 2026-09-17: fatal invalid-opcode handler
 
-Setup lesson: LLVM was installed under `D:\Program Files\LLVM`, not the example
-path `D:\LLVM`. Running the executables by their verified full paths succeeded;
-no reinstall was necessary.
+Added the IDT and a #UD Assembly entry that passes saved RIP to a fatal C handler.
+The test resolves the UD2 symbol from its own ELF rather than hard-coding an
+address, then compares both the serial diagnostic and QEMU trace against it.
+Both 128/256 MiB cases passed, followed by three normal-boot regression passes.
+The generic fatal fallback remained untested.
 
-## 2026-09-11 — ELF linker probe
+## 2026-09-17: returning timer interrupt
 
-Verification results: LLD linked the existing probe object with
-`--entry=answer`, exited with code 0, and produced an ELF64 x86-64 executable.
-The header inspector exited with code 0 and reported `Type: Executable (0x2)`.
-The observed entry address was `0x201120`; this is a result of this test's
-default linker layout, not a required or chosen kernel address.
+Added PIT/PIC IRQ0 at vector 32. The Assembly entry saves integer registers,
+aligns the C call, restores the saved stack, and returns with IRETQ. The handler
+increments ticks and sends master PIC EOI. Timer initialization is confined to
+test images; the single-CPU test configuration disables the local APIC and HPET.
 
-Result: ELF link-format probe IMPLEMENTED and verified. It was not executed.
-Repeat linking produced the same executable header and entry address.
-This probe is not bootable: setting an ELF entry field does not supply a boot
-protocol, a stack, a valid caller for a returning function, or kernel startup.
+The positive cases passed five waits at 128/256 MiB with register sentinels,
+CF/DF restoration, and clear DF inside C. QEMU independently recorded vector 32.
+A masked-IRQ image produced no tick or delivery during the two-second control
+observation. Normal boot and a #UD regression also passed. These tests did not
+measure timer accuracy or exercise the x2APIC transition branch.
 
-## 2026-09-11 — First kernel boot
+## 2026-09-21: source boundaries and reproducible checks
 
-Changed: added real nonreturning C kernel entry, Limine revision-6 markers,
-polled COM1 output, inline architecture operations, explicit ELF layout,
-boot configuration, and PowerShell build/run/test scripts. C++ is still planned.
+Moved COM1 output into a serial driver and shared the byte port-I/O primitives
+between the serial and timer code. Moved deliberate UD2 and register-probe
+Assembly under `tests/kernel`; those objects are linked only into their test
+images. Normal-image symbol inspection confirms that the probes and test-only
+DF instrumentation are absent.
 
-Dependency: Limine 12.5.2 binary release; archive and loader hashes plus the
-upstream license are retained in vendor/limine. No upstream signature check was
-performed.
+Added `scripts/check.ps1` for the full regression run and explicit/environment/
+PATH tool discovery. Every build now checks the final ELF for unresolved symbols.
+A discovery test with a nonexistent drive exposed `Join-Path` failing before the
+intended diagnostic; using filesystem path combination and an existence check
+made that case report the missing tool clearly.
 
-Decision: use QEMU's bundled UEFI firmware and directory-backed virtual FAT disk.
-This supersedes the provisional BIOS-first recommendation and avoids requiring
-a separate native Windows ISO builder. No host boot configuration was modified.
+Verification on Windows PowerShell 5.1, Clang 23.1.1, QEMU 11.1.0:
 
-Actual failure: the first QEMU launch exited with `Block node is read-only`.
-Layer: virtual disk configuration, before firmware or kernel execution.
-Hypothesis: the default disk device needed a writable top-level block node.
-Diagnostic/fix: retain read-only FAT backing, add snapshot=on to the disk drive
-and remove top-level readonly=on for that drive. Keep firmware read-only.
-Result: firmware found Limine, which loaded the unchanged kernel successfully.
+- All eight QEMU cases passed after the source changes.
+- The strengthened ordered-marker boot check passed three further boots.
+- Explicit directory, environment variable, PATH, and missing-tool checks passed.
+- `git diff --check` passed.
 
-Verification results:
-- Compile and link exited 0 without diagnostics.
-- ELF has entry 0xffffffff80001000, three PT_LOAD segments (RW, RX, R),
-  each aligned to 4096 bytes. These are virtual mappings, not observed RAM placement.
-- llvm-nm --undefined-only reported no undefined symbols.
-- First successful serial log contains both kernel markers; QEMU stderr was empty.
-- scripts/test-boot.ps1 exited 0: three fresh boots passed at 128/256/128 MiB.
-- Actual scripts/run.ps1 terminal run printed both markers; Ctrl+A then X exited
-  QEMU successfully with exit code 0. All test VMs were stopped.
-- Tested kernel SHA-256:
-  DDA7DEE63C79715AFC13EA905278529568CEA5DC055E64BAE0A9301F22C40D3F
+Local evidence directories (generated and excluded from Git):
 
-Status: first boot and serial-output milestone IMPLEMENTED for the tested QEMU
-configuration. Repeat interactive boot and three additional automated runs passed at 128/256/128 MiB.
-No CPU halted-state inspection, UART failure injection, real-hardware test,
-interrupt handling, heap, paging implementation, or protection boundary is claimed.
+- Boot: `build/test-c2f81416cc134e95acc1c9825d530597`.
+- Exceptions: `build/ud2/test-a77b1fa7507a4e77ab79a479096df053`.
+- Timer and masked control: `build/timer/test-5a499b9d067142eb879f12b67d9a99ea`.
 
-## 2026-09-17 — Fatal invalid-opcode exception milestone
-
-Added a C IDT builder and Assembly fatal entry stubs. The #UD stub passes saved
-RIP to a C diagnostic. Other gates use a generic fatal handler that is untested.
-No returning interrupt handlers, exception recovery, IST or device IRQs exist yet.
-
-The deliberate UD2 build lives under build/ud2, separate from normal boot files.
-Its test compares the saved RIP against the ELF's UD2 symbol and independently
-checks vector 6 and the same address in QEMU's CPU trace. It stops its own VM.
-
-Verification results:
-- C/Assembly compilation and ELF linking succeed with warnings treated as errors.
-- No undefined symbols reported in either normal or exception-test ELF.
-- #UD test passed at 128/256 MiB; saved RIP was 0xffffffff800013e2.
-- No failure/normal-completion marker, stderr, early exit, timeout or triple fault.
-- Logs: build/ud2/test-f98b4a1890b04c26ab8d22881dcf4b24.
-- Updated normal build passed three boots at 128/256/128 MiB with IDT marker.
-- Normal logs: build/test-7e07acc9be7a4923adedcb936bf248f9.
-- Assembly disassembly confirms UD2 and the intended frame-to-C entry instructions.
-
-General exceptions
-remain PARTIALLY IMPLEMENTED; fallback, error-code exceptions, NMI and nested
-faults are UNTESTED.
+Replaced the milestone worksheets with architecture, boot, exception, timer,
+and test references. Corrected stale boot output and separated current behavior
+from future work. No new hardware-support or memory-isolation claim is made.

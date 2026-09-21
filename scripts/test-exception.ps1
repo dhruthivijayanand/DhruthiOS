@@ -1,10 +1,13 @@
 param(
-    [string]$LlvmBin = 'D:\Program Files\LLVM\bin',
-    [string]$QemuDir = 'C:\Program Files\qemu',
+    [string]$LlvmBin,
+    [string]$QemuDir,
     [ValidateRange(1, 3)][int]$Runs = 2
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. "$PSScriptRoot/tools.ps1"
+$QemuDir = Resolve-QemuDirectory $QemuDir
+$LlvmBin = Resolve-LlvmDirectory $LlvmBin
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     & "$PSScriptRoot/build.ps1" -LlvmBin $LlvmBin -Mode ud2

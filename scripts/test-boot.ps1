@@ -1,9 +1,11 @@
 param(
-    [string]$QemuDir = 'C:\Program Files\qemu',
+    [string]$QemuDir,
     [ValidateRange(1, 5)][int]$Runs = 3
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. "$PSScriptRoot/tools.ps1"
+$QemuDir = Resolve-QemuDirectory $QemuDir
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     $qemu = Join-Path $QemuDir 'qemu-system-x86_64.exe'
@@ -33,7 +35,13 @@ try {
                         $contents.Contains('DhruthiOS: boot protocol accepted; CPU halted') -and
                         !$contents.Contains('DhruthiOS: unsupported') -and
                         !$contents.Contains('PANIC:') -and !$contents.Contains('FAIL:')) {
-                        $passed = $true
+                        $position = -1
+                        foreach ($marker in @('DhruthiOS: kernel entered', 'DhruthiOS: IDT loaded', 'DhruthiOS: boot protocol accepted; CPU halted')) {
+                            $found = $contents.IndexOf($marker, $position + 1, [StringComparison]::Ordinal)
+                            if ($found -lt 0) { throw "Missing/out-of-order marker '$marker'. Log: $log" }
+                            $position = $found
+                        }
+                        $passed = !$process.HasExited
                         break
                     }
                 }

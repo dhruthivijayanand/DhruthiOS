@@ -1,7 +1,7 @@
 # Limine dependency
 
 - Release page: https://github.com/limine-bootloader/limine/releases/tag/v12.5.2
-- User downloaded `limine-binary.tar.gz`; extracted only BOOTX64.EFI and LICENSE.
+- Source archive: `limine-binary.tar.gz`; only BOOTX64.EFI and LICENSE are vendored.
 - Loader contains the version string `Limine 12.5.2 (x86-64, UEFI)`.
 - Archive SHA-256: `4C760C09C53560D859B362319A3DC63B79CCA3D47F35D69AB0106A13B8057055`
 - BOOTX64.EFI SHA-256: `D257ADD3B8CA480470C50BA5E55899702F19B10D9B29DC8D4A5DB97FC4FB8B19`

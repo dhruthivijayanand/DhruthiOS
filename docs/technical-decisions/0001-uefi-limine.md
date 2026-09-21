@@ -1,23 +1,30 @@
-# Decision: existing Limine with QEMU UEFI for the first boot
+# 0001: UEFI boot with Limine
 
-Context: Windows host, beginner kernel project with limited development time, native LLVM available, no WSL
-or native ISO builder discovered. QEMU includes x86-64 UEFI firmware.
+Status: accepted.
 
-Alternatives: BIOS-first Limine ISO; install Unix build tools; custom loader;
-UEFI Limine with a directory-backed virtual FAT disk.
+## Context
 
-Chosen approach: Limine 12.5.2 BOOTX64.EFI with QEMU's bundled UEFI firmware,
-virtual FAT view of build/esp, and temporary snapshot writes. This replaces the
-initial provisional BIOS-first choice based on the actual tools found.
+The development host is Windows with native LLVM and QEMU. QEMU includes x86-64
+UEFI firmware. A separate ISO-building toolchain would add another dependency
+before any kernel code could run.
 
-Reason: get a documented 64-bit kernel handoff with minimal additional host setup.
+## Decision
 
-Trade-offs: this deliverable needs QEMU and the boot directory; it is not a
-standalone ISO or real-machine installer. No BIOS compatibility claim is made.
+Use Limine 12.5.2 with QEMU's UEFI firmware and a directory-backed virtual FAT
+disk. Give the drive a temporary snapshot layer. Keep the loader binary, license,
+and measured hashes in the repository.
 
-Consequences: own the entry, protocol revision check, serial code and ELF layout.
-Credit Limine for bootloading and initial CPU/stack/page-table setup. Preserve
-its license and measured dependency hashes. Stop QEMU before modifying boot
-files. Use only the project boot tree as the guest disk source.
+## Alternatives
 
-Evidence: repeated UEFI boots and the interactive run passed; see development-log.
+A BIOS ISO would require a different packaging path. A custom loader would make
+firmware interfaces and mode transitions prerequisites for kernel work. Both are
+valid future projects; neither is needed for the current interrupt and memory
+management work.
+
+## Consequences
+
+The kernel owns its ELF layout, revision check, diagnostics, and interrupt
+handling. Limine owns loading and initial CPU, stack, and page-table setup.
+The output is a QEMU boot directory, not an ISO or installer. Rebuilding requires
+stopping any VM using that directory. BIOS and real hardware are not supported
+by the current test configuration.

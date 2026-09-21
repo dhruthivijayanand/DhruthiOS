@@ -1,6 +1,8 @@
-param([string]$QemuDir = 'C:\Program Files\qemu')
+param([string]$QemuDir)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. "$PSScriptRoot/tools.ps1"
+$QemuDir = Resolve-QemuDirectory $QemuDir
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     $qemu = Join-Path $QemuDir 'qemu-system-x86_64.exe'

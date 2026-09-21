@@ -1,27 +1,53 @@
 # DhruthiOS
 
-An educational x86-64 operating-system kernel built with C and Assembly, tested in QEMU.
+A small x86-64 kernel in freestanding C and Assembly, developed on Windows and
+run under QEMU. The current work covers boot, fault reporting, and returning
+hardware interrupts.
 
-## Current status
+Normal boot loads an IDT, writes diagnostics to COM1, and halts. Separate test
+images exercise an invalid-opcode exception and a PIT timer interrupt. There is
+no interactive shell yet.
 
-IMPLEMENTED and tested in QEMU: UEFI/Limine boot, freestanding C entry with
-inline x86-64 Assembly, boot-revision check, polled serial output and fatal #UD
-reporting with a verified instruction address. General exception infrastructure
-is PARTIALLY IMPLEMENTED; other vectors use an UNTESTED generic fatal fallback.
-Device interrupts, memory allocation, and a bounded kernel shell are PLANNED.
-There is no user space, scheduler, filesystem, networking, or meaningful C++
-component yet. Normal boot installs an IDT, prints status and enters a halt loop.
+## Build and test
 
-## Build and run the kernel
+Requirements: Windows PowerShell 5.1 or newer, LLVM with Clang and LLD, and QEMU
+with `share/edk2-x86_64-code.fd`. Tested with LLVM 23.1.1 and QEMU 11.1.0.
+Limine 12.5.2 is included under `vendor/limine`.
 
-From this repository directory in PowerShell:
+From the repository root:
 
 ```powershell
-& ./scripts/build.ps1
-& ./scripts/run.ps1
+./scripts/check.ps1
 ```
 
-Expected terminal output after firmware messages:
+This builds the kernel and runs eight QEMU cases: three normal boots, two fault
+checks, two timer-return checks, and one masked-timer control. Each VM closes
+automatically. Logs are saved under `build/`.
+
+Scripts look for tools on `PATH` and in the standard installation directories.
+For a custom installation, set the directories in the current PowerShell session:
+
+```powershell
+$env:LLVM_BIN = 'D:\Program Files\LLVM\bin'
+$env:QEMU_DIR = 'C:\Program Files\qemu'
+./scripts/check.ps1
+```
+
+If Windows blocks local scripts, run the following in that terminal, then retry.
+The setting ends when the terminal closes.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+To build and run normal boot separately:
+
+```powershell
+./scripts/build.ps1
+./scripts/run.ps1
+```
+
+Expected kernel output:
 
 ```text
 DhruthiOS: kernel entered
@@ -29,97 +55,54 @@ DhruthiOS: IDT loaded
 DhruthiOS: boot protocol accepted; CPU halted
 ```
 
-Quit QEMU with Ctrl+A, release, then X. Stop QEMU before rebuilding.
-The run script uses one CPU, 128 MiB RAM, TCG emulation, bundled UEFI firmware,
-and a project-directory virtual FAT disk with temporary guest writes.
+The interactive runner uses QEMU's terminal console. Press Ctrl+A, release both
+keys, then press X to exit. If the terminal does not pass that sequence through,
+close that QEMU process in Task Manager. Stop the VM before rebuilding: its
+virtual disk reads the files in `build/esp`.
 
-Verified tools: Clang/LLD 23.1.1 at `D:\Program Files\LLVM\bin`, QEMU 11.1.0 at
-`C:\Program Files\qemu`, Limine 12.5.2 included with its upstream license in
-vendor/limine. Build/run scripts accept alternate tool directories as parameters.
+## What is implemented
 
-Architecture: QEMU PC -> UEFI firmware -> Limine -> C kmain -> serial output.
-The kernel uses Limine's initial stack and page tables; we did not implement
-those mechanisms or a bootloader. The serial device is polled with bounded
-attempts; there is no interrupt-based output or exception recovery yet.
+| Component | Status | Evidence |
+| --- | --- | --- |
+| UEFI/Limine boot and serial output | IMPLEMENTED | Repeated boots at 128 and 256 MiB |
+| Fatal invalid-opcode handler | IMPLEMENTED | Saved RIP matches the fault symbol and QEMU trace |
+| PIT/PIC timer interrupt | IMPLEMENTED in test images | Repeated returns, register/flag checks, masked-IRQ control |
+| General exception handling | PARTIALLY IMPLEMENTED | IDT installed; generic fatal fallback is UNTESTED |
+| Physical memory allocator and kernel shell | PLANNED | No implementation yet |
+| User space, scheduling, filesystem, networking | FUTURE WORK | Outside the current kernel |
 
-Read [the boot milestone walkthrough](docs/boot-process.md) for all eleven steps,
-source explanations, exact commands, debugging evidence, and references.
+## Design
 
-## Verification
-
-Run the exception test (builds a separate test image and closes QEMU automatically):
-
-```powershell
-& ./scripts/test-exception.ps1
+```text
+QEMU PC / UEFI
+       |
+     Limine -- loads ELF, supplies stack and initial page tables
+       |
+     kmain -- checks protocol revision, initializes serial output and IDT
+       |
+       +-- normal image: halt
+       +-- fault image: UD2 -> vector 6 -> fatal diagnostic
+       +-- timer image: PIT -> PIC -> vector 32 -> tick count -> IRETQ
 ```
 
-Expected: two PASS lines confirming #UD and its fault address, at 128/256 MiB RAM.
-The script checks QEMU's exception trace as well as kernel serial output.
-See [the exception walkthrough](docs/interrupts.md) for source and all eleven steps.
+The kernel runs on one virtual CPU. C owns initialization and device state;
+Assembly handles port I/O and interrupt entry/return. It uses Limine's memory
+mappings and has no allocator or user/kernel isolation. There is no C++ runtime
+or C++ component at this stage.
 
-Rebuild and test normal boot:
+ [Architecture](docs/architecture.md): source layout and kernel contracts.
+ [Boot](docs/boot-process.md): handoff, ELF layout, and serial output.
+ [Exceptions](docs/interrupts.md) and [timer](docs/timer.md): entry paths and limits.
+ [Testing](docs/testing.md): commands, assertions, and failure diagnosis.
+ [Development log](docs/development-log.md): results and problems encountered.
+ [Boot decision](docs/technical-decisions/0001-uefi-limine.md): why UEFI and Limine.
 
-```powershell
-& ./scripts/build.ps1
-& ./scripts/test-boot.ps1
-```
+Validation is limited to QEMU's PC model with TCG. There is no real-hardware
+support claim, bootable ISO, or installer. The next substantial task is reading
+the boot memory map and implementing a physical page allocator.
 
-Three fresh boots passed with 128, 256, and 128 MiB RAM. The interactive run script
-also printed the two markers and exited successfully with Ctrl+A then X. ELF
-inspection at the first boot milestone showed entry 0xffffffff80001000, separate
-RW/RX/R loadable segments, and no unresolved symbols. See docs/development-log.md.
+## Dependencies
 
-Limitations: emulator-only testing; no real-hardware validation, negative UART
-tests, comprehensive fault recovery, memory isolation, or independent halted-state measurement.
-The current image is a directory-backed QEMU boot setup, not a standalone ISO.
-Future milestones: extend exception diagnostics and add timer interrupts, then
-physical memory allocation and the bounded shell.
-
-## First exercise: compile a C function
-
-`tests/toolchain/probe.c` defines a function named `answer`. It takes no arguments
-and returns the integer 42. It does not print anything. It is not a kernel entry
-point and must not be booted or launched as a Windows program.
-
-From this repository's directory, run in PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force build | Out-Null
-& 'D:\Program Files\LLVM\bin\clang.exe' --target=x86_64-unknown-none-elf -ffreestanding -std=c11 -Wall -Wextra -Werror -c tests/toolchain/probe.c -o build/probe.o
-& 'D:\Program Files\LLVM\bin\llvm-readobj.exe' --file-headers build/probe.o
-```
-
-The compiler should exit successfully. The inspector should report
-`Format: elf64-x86-64`, `Arch: x86_64`, and `Type: Relocatable`.
-
-- `--target`: explicitly chooses the target instead of the compiler's Windows default.
-- `-ffreestanding`: selects freestanding language assumptions.
-- `-std=c11`: selects the C11 language standard.
-- `-Wall -Wextra -Werror`: enables common/additional warnings and treats warnings as errors.
-- `-c`: stops after creating an object file; no linking occurs.
-- `-o`: names the output file.
-
-These are probe flags, not the complete future kernel build configuration.
-This check verifies object generation and its target format, not execution,
-linking, bootability, or complete kernel toolchain readiness.
-
-## Second exercise: verify ELF linking
-
-From the same repository directory in PowerShell:
-
-```powershell
-& 'D:\Program Files\LLVM\bin\ld.lld.exe' --entry=answer -o build/link-probe.elf build/probe.o
-& 'D:\Program Files\LLVM\bin\llvm-readobj.exe' --file-headers build/link-probe.elf
-```
-
-Expected: `Format: elf64-x86-64` and `Type: Executable (0x2)`.
-`--entry=answer` sets the ELF entry address to the address of that symbol.
-This is only a linker-format probe. It has no boot-protocol integration or
-startup environment. Its function returns and needs a valid caller. Do not
-execute or boot this file. Its default linker layout is not our kernel layout.
-The future kernel needs a deliberate entry routine, layout, and boot contract.
-
-## References
-
-- [Clang cross-compilation](https://clang.llvm.org/docs/CrossCompilation.html)
-- [Clang freestanding builds](https://clang.llvm.org/docs/UsersManual.html#freestanding-builds)
+[Limine](https://github.com/limine-bootloader/limine) provides the bootloader.
+Its BSD-2-Clause license and recorded binary hashes are retained in
+[vendor/limine](vendor/limine/PROVENANCE.md).

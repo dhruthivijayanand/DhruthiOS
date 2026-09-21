@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 void exceptions_init(void);
-void exception_test_ud(void);
 /* Assembly entry points call these C functions; neither returns. */
 _Noreturn void exception_panic_ud(uint64_t rip);
 _Noreturn void exception_panic_unhandled(void);

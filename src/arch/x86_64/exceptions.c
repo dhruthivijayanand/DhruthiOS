@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "exceptions.h"
+#include "timer.h"
 
 /* Intel SDM Volume 3A, 64-bit IDT gate descriptor. */
 struct __attribute__((packed)) idt_gate {
@@ -46,6 +47,7 @@ void exceptions_init(void)
         set_gate(vector, exception_unhandled_entry, selector);
     }
     set_gate(6, exception_ud_entry, selector);
+    set_gate(32, timer_irq_entry, selector);
     const struct idt_pointer pointer = {
         .limit = (uint16_t)(sizeof(idt) - 1),
         .base = (uintptr_t)idt

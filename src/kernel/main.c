@@ -1,6 +1,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "exceptions.h"
+#include "timer.h"
+#include "serial.h"
+#if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER)
+#include "kernel-tests.h"
+#endif
 
 /* Limine protocol markers and base revision, from the protocol specification.
  * The linker preserves these arrays in this order. They are not CPU opcodes. */
@@ -18,50 +23,11 @@ static volatile uint64_t requests_end[] = {
     0xadc0e0531bb10d03, 0x9572709f31764c62
 };
 
-enum { COM1 = 0x3f8, TRANSMIT_READY = 0x20, POLL_LIMIT = 1000000 };
-
-static void outb(uint16_t port, uint8_t value)
-{
-    __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port) : "memory");
-}
-
-static uint8_t inb(uint16_t port)
-{
-    uint8_t value;
-    __asm__ volatile ("inb %1, %0" : "=a"(value) : "Nd"(port) : "memory");
-    return value;
-}
-
 static _Noreturn void halt_forever(void)
 {
     for (;;) {
         __asm__ volatile ("cli; hlt" : : : "memory");
     }
-}
-
-static void serial_init(void)
-{
-    outb(COM1 + 1, 0x00); /* Disable UART interrupts: this driver polls. */
-    outb(COM1 + 3, 0x80); /* Enable access to baud-rate divisor registers. */
-    outb(COM1 + 0, 0x01); /* Divisor low byte: 115200 baud for this UART. */
-    outb(COM1 + 1, 0x00); /* Divisor high byte. */
-    outb(COM1 + 3, 0x03); /* 8 data bits, no parity, 1 stop bit; clear DLAB. */
-    outb(COM1 + 2, 0x07); /* Enable FIFO, clear receive/transmit FIFOs. */
-    outb(COM1 + 4, 0x03); /* Assert DTR and RTS; no loopback. */
-}
-
-static bool serial_write(const char *text)
-{
-    while (*text != '\0') {
-        unsigned attempts = 0;
-        while ((inb(COM1 + 5) & TRANSMIT_READY) == 0) {
-            if (++attempts == POLL_LIMIT) {
-                return false; /* Bounded attempts, not a calibrated timer. */
-            }
-        }
-        outb(COM1, (uint8_t)*text++);
-    }
-    return true;
 }
 
 _Noreturn void exception_panic_ud(uint64_t rip)
@@ -99,6 +65,20 @@ _Noreturn void kmain(void)
     (void)serial_write("TEST: triggering UD2\r\n");
     exception_test_ud();
     (void)serial_write("FAIL: UD2 returned unexpectedly\r\n");
+    halt_forever();
+#endif
+#ifdef DHRUTHIOS_TEST_TIMER
+    timer_init();
+    (void)serial_write("TEST: timer configured; waiting for IRQ0\r\n");
+    for (unsigned iteration = 0; iteration < 5; ++iteration) {
+        const uint64_t before = timer_ticks();
+        if (!timer_wait_probe() || !timer_handler_state_ok() || timer_ticks() <= before) {
+            (void)serial_write("FAIL: timer return or saved state check\r\n");
+            halt_forever();
+        }
+        (void)serial_write("TICK: IRQ0 returned; registers and flags preserved\r\n");
+    }
+    (void)serial_write("PASS: five timer waits completed; kernel execution resumed\r\n");
     halt_forever();
 #endif
     (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
