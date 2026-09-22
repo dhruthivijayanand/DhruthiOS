@@ -60,6 +60,7 @@ _Noreturn void kmain(void)
         halt_forever();
     }
     exceptions_init();
+    (void)serial_write("Hello Dhruthi! I am running inside your kernel. \r\n");
     (void)serial_write("DhruthiOS: IDT loaded\r\n");
 #ifdef DHRUTHIOS_TEST_UD2
     (void)serial_write("TEST: triggering UD2\r\n");
