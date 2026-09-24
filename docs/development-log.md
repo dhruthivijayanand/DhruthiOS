@@ -67,3 +67,17 @@ Local evidence directories (generated and excluded from Git):
 Replaced the milestone worksheets with architecture, boot, exception, timer,
 and test references. Corrected stale boot output and separated current behavior
 from future work. No new hardware-support or memory-isolation claim is made.
+## 2026-09-24 — Single-character serial echo
+
+Added a function that checks for incoming serial data and reads one
+character when available. A separate echo build prints that character
+back, then halts. The normal build keeps its original startup behaviour.
+
+Verification:
+- Manual QEMU test: typed a and observed "ECHO: received [a]".
+- Normal boot regression: passed at 128, 256, and 128 MiB RAM.
+- Logs: build/test-9396f540afac42959fa16a48e53d5740/
+
+Status: PROTOTYPE. One printable character tested manually.
+No shell or physical keyboard driver yet. The echo test actively polls
+while waiting; input error handling and broader input tests remain. 

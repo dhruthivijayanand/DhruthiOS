@@ -82,6 +82,30 @@ _Noreturn void kmain(void)
     (void)serial_write("PASS: five timer waits completed; kernel execution resumed\r\n");
     halt_forever();
 #endif
+#ifdef DHRUTHIOS_TEST_ECHO
+    if (!serial_write("ECHO: type one letter or number\r\n")) {
+        halt_forever();
+    }
+
+    for (;;) {
+        char character;
+        if (!serial_try_read(&character)) {
+            continue;
+        }
+
+        if (character < ' ' || character > '~') {
+            continue;
+        }
+
+        char reply[2] = { character, '\0' };
+        if (!serial_write("ECHO: received [") ||
+            !serial_write(reply) ||
+            !serial_write("]\r\n")) {
+            halt_forever();
+        }
+        break;
+    }
+#endif
     (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
     halt_forever();
 }

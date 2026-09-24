@@ -1,6 +1,6 @@
 param(
     [string]$LlvmBin,
-    [ValidateSet('normal', 'ud2', 'timer', 'timer-masked')][string]$Mode = 'normal'
+   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo')][string]$Mode = 'normal'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -25,6 +25,7 @@ try {
         '-mgeneral-regs-only', '-mcmodel=kernel', '-fno-unwind-tables',
         '-fno-asynchronous-unwind-tables', '-Wall', '-Wextra', '-Werror', '-O2', '-g', '-Iinclude')
     if ($Mode -eq 'ud2') { $flags += '-DDHRUTHIOS_TEST_UD2=1' }
+    if ($Mode -eq 'echo') { $flags += '-DDHRUTHIOS_TEST_ECHO=1' }
     if ($Mode -like 'timer*') { $flags += '-DDHRUTHIOS_TEST_TIMER=1' }
     if ($Mode -eq 'timer-masked') { $flags += '-DDHRUTHIOS_TIMER_MASKED=1' }
     if ($Mode -ne 'normal') { $flags += '-Itests/kernel' }

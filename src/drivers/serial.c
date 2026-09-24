@@ -27,3 +27,16 @@ bool serial_write(const char *text)
     }
     return true;
 }
+/* character must point to writable storage for one character. */
+bool serial_try_read(char *character)
+{
+    const uint8_t receive_ready = 0x01;
+
+    if ((inb(COM1 + 5) & receive_ready) == 0) {
+        return false;
+    }
+
+    *character = (char)inb(COM1);
+    return true;
+}
+
