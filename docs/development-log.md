@@ -171,3 +171,17 @@ was used without being declared. Adding its boolean declaration fixed it.
 Status: PROTOTYPE. Polling remains in use, and terminal escape
 sequences are not yet supported.
 
+## 2026-09-28 - about command - descriptive 
+
+Added an about command describing the kernel and its current languages.
+Updated help to list both commands.
+
+Manual QEMU tests passed:
+- about displayed the description.
+- help listed help and about.
+- abouts was rejected as an unknown command.
+- The prompt returned after each response.
+
+Debugging lesson: an extra closing brace ended a block too early,
+causing several compiler errors. Removing that brace fixed compilation.
+

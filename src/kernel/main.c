@@ -138,8 +138,22 @@ if (length == 0) {
            line[1] == 'e' &&
            line[2] == 'l' &&
            line[3] == 'p') {
-    response = "Commands:\r\n  help - show this message\r\n";
+     response =
+        "Commands:\r\n"
+        "  help  - list commands\r\n"
+        "  about - describe DhruthiOS\r\n";
+} else if (length == 5 &&
+           line[0] == 'a' &&
+           line[1] == 'b' &&
+           line[2] == 'o' &&
+           line[3] == 'u' &&
+           line[4] == 't') {
+    response =
+        "DhruthiOS: an educational x86-64 kernel.\r\n"
+        "Written in C and Assembly; running inside QEMU.\r\n"
+        "This command interface runs inside the kernel.\r\n";
 }
+
 
 if (!serial_write(response)) {
     halt_forever();
