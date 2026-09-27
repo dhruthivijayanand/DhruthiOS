@@ -136,3 +136,21 @@ Separate CR, LF, and CRLF injection tests remain unperformed.
 
 Status: PROTOTYPE. Typing remains invisible until Enter.
 Backspace is unsupported so oversized input still halts the kernel. 
+## 2026-09-28 - visible typing and backspace
+a series of editing tests that passed
+Characters now appear as they are typed. Enter moves the response
+onto a new line. Backspace reduces the accepted input length and
+erases the displayed character.
+
+Manual QEMU tests passed:
+- help appeared while typing and produced the expected response.
+- helx, Backspace, p was interpreted as help.
+- Backspace on empty input preserved the prompt.
+- Erasing abc completely, then pressing Enter, produced
+  "No command entered."
+- Normal boot regression: three runs passed.
+
+Status: PROTOTYPE. Oversized input still halts the kernel.
+Arrow keys and other terminal escape sequences are not supported.
+
+

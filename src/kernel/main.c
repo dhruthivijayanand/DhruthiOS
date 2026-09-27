@@ -102,9 +102,21 @@ _Noreturn void kmain(void)
     continue;
 }
 previous_was_cr = (character == '\r');
+if (character == '\b' || character == 127) {
+    if (length > 0) {
+        --length;
+        if (!serial_write("\b \b")) {
+            halt_forever();
+        }
+    }
+    continue;
+}
 
         if (character == '\r' || character == '\n') {
             line[length] = '\0';
+            if (!serial_write("\r\n")) {
+    halt_forever();
+}
 
             const char *response = "Unknown command. Try help.\r\n";
 
@@ -140,6 +152,11 @@ continue;
 
         line[length] = character;
         ++length;
+
+        char visible[2] = { character, '\0' };
+if (!serial_write(visible)) {
+    halt_forever();
+}
     }
 #endif
 (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
