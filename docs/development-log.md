@@ -103,3 +103,18 @@ Status: PROTOTYPE. Input is polled, typing is not displayed immediately,
 Backspace is unsupported, and the kernel stops after one line.
 This collects text; it does not execute commands yet.
 
+## 2026-09-28 - first command handling
+
+Added exact matching for the help command in the separate echo build.
+
+Manual QEMU tests:
+- help displayed the command description.
+- helpful produced "Unknown command. Try help."
+- Empty input produced "No command entered."
+
+Normal boot: all three logs contained the expected startup markers.
+Logs: build/test-665817157c8343d8a2dea3c9226b47c5/
+
+Status: PROTOTYPE. Handles one command, then halts.
+No repeated prompt, live typing display, or Backspace support yet.
+

@@ -100,11 +100,21 @@ _Noreturn void kmain(void)
         if (character == '\r' || character == '\n') {
             line[length] = '\0';
 
-            if (!serial_write("ECHO: received [") ||
-                !serial_write(line) ||
-                !serial_write("]\r\n")) {
-                halt_forever();
-            }
+            const char *response = "Unknown command. Try help.\r\n";
+
+if (length == 0) {
+    response = "No command entered.\r\n";
+} else if (length == 4 &&
+           line[0] == 'h' &&
+           line[1] == 'e' &&
+           line[2] == 'l' &&
+           line[3] == 'p') {
+    response = "Commands:\r\n  help - show this message\r\n";
+}
+
+if (!serial_write(response)) {
+    halt_forever();
+}
             break;
         }
 
