@@ -86,6 +86,7 @@ _Noreturn void kmain(void)
 /* Next milestone: literally just collect a bounded line of input before processing it. */
  char line[32];
     unsigned length = 0;
+    bool previous_was_cr = false;
 
     if (!serial_write("ECHO: type a short line, then press Enter\r\n")) {
         halt_forever();
@@ -96,6 +97,11 @@ _Noreturn void kmain(void)
         if (!serial_try_read(&character)) {
             continue;
         }
+        if (previous_was_cr && character == '\n') {
+    previous_was_cr = false;
+    continue;
+}
+previous_was_cr = (character == '\r');
 
         if (character == '\r' || character == '\n') {
             line[length] = '\0';
@@ -115,7 +121,12 @@ if (length == 0) {
 if (!serial_write(response)) {
     halt_forever();
 }
-            break;
+
+length = 0;
+if (!serial_write("DhruthiOS> ")) {
+    halt_forever();
+}
+continue;
         }
 
         if (character < ' ' || character > '~') {

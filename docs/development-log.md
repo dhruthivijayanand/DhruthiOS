@@ -118,3 +118,21 @@ Logs: build/test-665817157c8343d8a2dea3c9226b47c5/
 Status: PROTOTYPE. Handles one command, then halts.
 No repeated prompt, live typing display, or Backspace support yet.
 
+## 2026-09-28 - repeated command prompt
+
+After each command, the kernel resets the input length, displays
+DhruthiOS>, and checks for more input instead of halting.
+
+Manual QEMU tests passed in one session:
+- help, hello, help produced the expected responses.
+- Empty input produced "No command entered."
+- help still worked after empty input.
+- The prompt returned after each response.
+
+Normal boot regression: three runs passed.
+
+Added handling intended to treat CR followed by LF as one line ending.
+Separate CR, LF, and CRLF injection tests remain unperformed.
+
+Status: PROTOTYPE. Typing remains invisible until Enter.
+Backspace is unsupported so oversized input still halts the kernel. 
