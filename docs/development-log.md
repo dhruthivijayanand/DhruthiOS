@@ -81,3 +81,25 @@ Verification:
 Status: PROTOTYPE. One printable character tested manually.
 No shell or physical keyboard driver yet. The echo test actively polls
 while waiting; input error handling and broader input tests remain. 
+
+## 2026-09-27 - this concerns bounded serial input
+
+Extended echo mode to collect a line in a 32-byte buffer:
+up to 31 printable characters plus the end-of-text marker.
+
+Manual QEMU tests passed:
+- "help" was echoed correctly.
+- Empty input produced [].
+- Exactly 31 characters were accepted.
+- The 32nd character produced "line too long; stopping".
+
+Normal boot regression: three runs passed after restoring the
+completion message expected by the test.
+
+Debugging lesson: the initial regression failure was an exact-text
+mismatch. The log showed that the kernel reached its final message.
+
+Status: PROTOTYPE. Input is polled, typing is not displayed immediately,
+Backspace is unsupported, and the kernel stops after one line.
+This collects text; it does not execute commands yet.
+

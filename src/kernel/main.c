@@ -83,7 +83,11 @@ _Noreturn void kmain(void)
     halt_forever();
 #endif
 #ifdef DHRUTHIOS_TEST_ECHO
-    if (!serial_write("ECHO: type one letter or number\r\n")) {
+/* Next milestone: literally just collect a bounded line of input before processing it. */
+ char line[32];
+    unsigned length = 0;
+
+    if (!serial_write("ECHO: type a short line, then press Enter\r\n")) {
         halt_forever();
     }
 
@@ -93,19 +97,31 @@ _Noreturn void kmain(void)
             continue;
         }
 
+        if (character == '\r' || character == '\n') {
+            line[length] = '\0';
+
+            if (!serial_write("ECHO: received [") ||
+                !serial_write(line) ||
+                !serial_write("]\r\n")) {
+                halt_forever();
+            }
+            break;
+        }
+
         if (character < ' ' || character > '~') {
             continue;
         }
 
-        char reply[2] = { character, '\0' };
-        if (!serial_write("ECHO: received [") ||
-            !serial_write(reply) ||
-            !serial_write("]\r\n")) {
+        if (length >= sizeof(line) - 1) {
+            (void)serial_write("ECHO: line too long; stopping\r\n");
             halt_forever();
         }
-        break;
+
+        line[length] = character;
+        ++length;
     }
 #endif
-    (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
+(void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
     halt_forever();
 }
+
