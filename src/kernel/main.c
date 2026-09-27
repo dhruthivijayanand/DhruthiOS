@@ -87,6 +87,7 @@ _Noreturn void kmain(void)
  char line[32];
     unsigned length = 0;
     bool previous_was_cr = false;
+    bool discard_line = false;
 
     if (!serial_write("ECHO: type a short line, then press Enter\r\n")) {
         halt_forever();
@@ -102,6 +103,16 @@ _Noreturn void kmain(void)
     continue;
 }
 previous_was_cr = (character == '\r');
+if (discard_line) {
+    if (character == '\r' || character == '\n') {
+        discard_line = false;
+        length = 0;
+        if (!serial_write("DhruthiOS> ")) {
+            halt_forever();
+        }
+    }
+    continue;
+}
 if (character == '\b' || character == 127) {
     if (length > 0) {
         --length;
@@ -145,10 +156,13 @@ continue;
             continue;
         }
 
-        if (length >= sizeof(line) - 1) {
-            (void)serial_write("ECHO: line too long; stopping\r\n");
-            halt_forever();
-        }
+       if (length >= sizeof(line) - 1) {
+    discard_line = true;
+    if (!serial_write("\r\nLine too long. Press Enter to try again.\r\n")) {
+        halt_forever();
+    }
+    continue;
+}
 
         line[length] = character;
         ++length;

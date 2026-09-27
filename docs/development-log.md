@@ -153,4 +153,21 @@ Manual QEMU tests passed:
 Status: PROTOTYPE. Oversized input still halts the kernel.
 Arrow keys and other terminal escape sequences are not supported.
 
+## 2026-09-28 - recovery from oversized input
+
+Input exceeding 31 characters now rejects the entire line.
+The kernel ignores further characters until Enter, then displays
+a fresh prompt instead of halting.
+
+Manual QEMU tests passed:
+- The 32nd character triggered the length error.
+- Enter restored the prompt, and a new help command worked.
+- help typed before ending the rejected line was discarded.
+- Normal boot regression: three runs passed.
+
+Development issue: compilation initially failed because discard_line
+was used without being declared. Adding its boolean declaration fixed it.
+
+Status: PROTOTYPE. Polling remains in use, and terminal escape
+sequences are not yet supported.
 
