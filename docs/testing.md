@@ -90,3 +90,8 @@ and test-echo.ps1 -Mode monitor adds two integrated boots. Each monitor run repe
 the 14 input scenarios, checks parsed memory counts and rejects command suffixes,
 then performs 10 memtest/memory cycles with identical before/after counts.
 See [monitor.md](monitor.md). Failure cleanup branches are not fault-injected.
+
+Final monitor tests additionally require increasing delivered-timer counts while
+idle and after the memory-test cycles; ticksx must remain an unknown command.
+package.ps1 runs the complete suite from a Git archive extracted to a fresh folder,
+then includes its actual logs and source commit in the submission package.

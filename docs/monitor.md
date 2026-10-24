@@ -17,7 +17,7 @@ Assembly still serves interrupt entry/return and architecture-specific instructi
 Normal and legacy echo builds remain available.
 
 ## STEP 4 — DESIGN
-Commands: help, about, memory, memtest. Exact lengths and bytes must match;
+Commands: help, about, memory, memtest, ticks. Exact lengths and bytes must match;
 memoryx and memtestx are unknown commands. The line limit remains 31 printable bytes.
 The monitor owns one static allocator initialized from the real Limine memory map.
 
@@ -104,9 +104,8 @@ and repeated tests. DO NOT BOTHER DOCUMENTING THIS: every intermediate build.
 INTERVIEW-WORTHY: Why can C++ run without an OS? What does the constructor need?
 Why does used=0 not mean the kernel occupies no RAM? How would a page leak appear?
 
-Limitations: kernel privilege only, polling input, one CPU, interrupts disabled
-during monitor operation, no processes, heap, filesystem, networking or own page
-tables. Timer interrupts remain demonstrated by isolated timer tests. The graphical
+Limitations: kernel privilege only, polling input, one CPU, interrupts disabled during command execution, no processes, heap, filesystem, networking or own page
+tables. The final monitor also enables timer interrupts while waiting for serial input. The graphical
 launch wrapper uses the previously supported SDL/serial interface; this milestone's
 automated interaction uses named pipes rather than driving the graphical window.
 
@@ -116,3 +115,21 @@ Milestone: Add C++ memory monitor and integrated demo.
 Verified 2026-10-24: all 23 QEMU runs passed. Monitor evidence:
 build/monitor/test-40c092a68cad4149ad8b4bfaca3d95f6/serial-{128M,256M}.log.
 Formatter evidence: build/format/test-c71b7e8e176d4f79bbf5b820938c48cf/.
+
+
+## Final integration: timer-driven idle waiting
+
+After initializing the allocator, the monitor calls timer_init. When no serial
+byte is available it executes STI; HLT; CLI in one inline Assembly statement.
+It enters with IF clear, waits with IRQ0 enabled, then restores IF-clear service
+contracts. The timer handler only updates ticks and acknowledges the PIC.
+Only IRQ0 is unmasked; HPET is disabled in this QEMU configuration.
+
+ticks reports delivered interrupts, not uptime. Serial input is still polled,
+roughly on timer wakeups, not interrupt-driven UART input. Command execution
+can delay/miss individual timer events; no timekeeping accuracy is claimed.
+
+The integration test requires nonzero/increasing counts while idle and continued
+delivery after ten memory-test cycles. Existing input-boundary checks run too.
+See Intel SDM Volume 2B, STI, for delayed recognition after STI:
+https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2b-manual.pdf

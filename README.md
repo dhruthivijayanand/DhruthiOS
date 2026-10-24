@@ -36,10 +36,10 @@ To demonstrate the interactive monitor:
 ```
 
 In the QEMU window press **Ctrl+Alt+2** for serial output. Type `help` or
-`about`, then Enter. Backspace edits input. Also run memory, memtest, then memory again: free-page counts should match. Close the window to exit.
+`about`, then Enter. Backspace edits input. Also run memory, memtest, then memory again: free-page counts should match. Run ticks twice to see delivered timer interrupts increase. Close the window to exit.
 Stop QEMU before rebuilding its image. The monitor accepts up to 31 printable
 characters and rejects an oversized line until Enter, then offers a fresh prompt.
-It actively polls and does not support arrows, escape sequences, or Unicode.
+It polls serial input after timer wakeups and does not support arrows, escape sequences, or Unicode.
 
 Normal boot is still available with build.ps1 (default mode) and run.ps1.
 The normal runner uses the terminal: Ctrl+A then X requests exit, but some
@@ -52,10 +52,10 @@ in Task Manager if necessary.
 | --- | --- | --- |
 | UEFI/Limine boot and serial output | IMPLEMENTED | Repeated 128/256 MiB boots |
 | Fatal invalid-opcode handler | IMPLEMENTED | Saved RIP and QEMU fault trace agree |
-| PIT/PIC returning timer interrupt | IMPLEMENTED in test images | Registers/flags, tick count, masked control |
+| PIT/PIC returning timer interrupt | IMPLEMENTED in monitor and test images | Registers/flags, masked control, live ticks and idle wakeups |
 | General exceptions | PARTIALLY IMPLEMENTED | Generic fallback and nested faults remain UNTESTED |
 | Command selection | IMPLEMENTED | 17 automated cases per memory size |
-| Serial kernel monitor | PROTOTYPE | 14 automated serial scenarios per memory size |
+| Bounded serial kernel monitor | IMPLEMENTED for the stated QEMU scope | 14 editing scenarios, memory cycles and live timer checks per memory size |
 | Read-only boot memory map | IMPLEMENTED in memmap image | 20 validator cases and independent totals at 128/256/512 MiB |
 | Physical page allocator | IMPLEMENTED in monitor and pmm images | Exhaustion, uniqueness, recovery and invalid-free checks at 128/256 MiB |
 | Access to allocated pages | IMPLEMENTED in monitor and directmap images | Two distinct pages, full byte-pattern readback at 128/256 MiB |
@@ -89,6 +89,7 @@ user space. No hosted runtime is used. The monitor owns a physical-page pool; me
 - [Integrated monitor and C++ design](docs/monitor.md).
 - [Demo walkthrough, interview questions and resume wording](docs/demo-guide.md).
 - [Regression tests](docs/testing.md).
+- [Submission scope, package creation and prebuilt launch](docs/release.md).
 - [Memory map](docs/memory-management.md), [physical page allocation](docs/physical-pages.md), and [accessing pages](docs/direct-map.md).
 - [Development log](docs/development-log.md).
 - [UEFI/Limine decision](docs/technical-decisions/0001-uefi-limine.md).

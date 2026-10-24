@@ -18,7 +18,8 @@ try {
         $start.UseShellExecute = $false
         $start.CreateNoWindow = $true
         $start.RedirectStandardError = $true
-        $start.Arguments = "-machine pc -accel tcg -m $ram -smp 1 -drive `"if=pflash,format=raw,readonly=on,file=$firmware`" -drive format=raw,snapshot=on,file=fat:build/$Mode/esp -display none -serial pipe:$pipeName -monitor none -net none -no-reboot"
+        $machine = if ($Mode -eq 'monitor') { 'pc,hpet=off' } else { 'pc' }
+        $start.Arguments = "-machine $machine -accel tcg -m $ram -smp 1 -drive `"if=pflash,format=raw,readonly=on,file=$firmware`" -drive format=raw,snapshot=on,file=fat:build/$Mode/esp -display none -serial pipe:$pipeName -monitor none -net none -no-reboot"
         $process = [Diagnostics.Process]::Start($start)
         $errorRead = $process.StandardError.ReadToEndAsync()
         $client = $null
@@ -80,7 +81,7 @@ try {
             $help = "Commands:`r`n  help  - list commands`r`n  about - describe DhruthiOS`r`n"
             $about = "DhruthiOS: an educational x86-64 kernel.`r`nWritten in C and Assembly; running inside QEMU.`r`nThis command interface runs inside the kernel.`r`n"
             if ($Mode -eq 'monitor') {
-                $help += "  memory - show page counts`r`n  memtest - test two pages and return them`r`n"
+                $help += "  memory - show page counts`r`n  memtest - test two pages and return them`r`n  ticks - show delivered timer interrupts`r`n"
                 $about = "DhruthiOS: an educational x86-64 kernel.`r`nAssembly interrupt entry, C services, C++ monitor.`r`nRunning inside QEMU; commands execute in the kernel.`r`n"
             }
             $unknown = "Unknown command. Try help.`r`n"
@@ -109,7 +110,7 @@ try {
                 $inputBytes = [Text.Encoding]::ASCII.GetBytes($case.Input)
                 $writeTask = $stream.WriteAsync($inputBytes, 0, $inputBytes.Length)
                 if (!$writeTask.Wait(5000)) { throw 'Serial write timed out.' }
-                $writeTask.GetAwaiter().GetResult()
+                [void]$writeTask.GetAwaiter().GetResult()
                 $actual = Wait-SerialText -Offset $offset -Expected $prompt
                 if ($actual -cne $case.Expected) {
                     throw "Output mismatch: $($case.Name). Log: $logPath"
@@ -123,9 +124,19 @@ try {
                     $inputBytes = [Text.Encoding]::ASCII.GetBytes($Command + "`r")
                     $writeTask = $stream.WriteAsync($inputBytes, 0, $inputBytes.Length)
                     if (!$writeTask.Wait(5000)) { throw 'Monitor write timed out.' }
-                    $writeTask.GetAwaiter().GetResult()
+                    [void]$writeTask.GetAwaiter().GetResult()
                     return Wait-SerialText -Offset $offset -Expected $prompt
                 }
+                function Read-MonitorTicks {
+                    $reply = Invoke-MonitorCommand 'ticks'
+                    $tickMatch = [regex]::Match($reply, '\Aticks\r\nTimer interrupts received: (\d+) \(nominal 100 Hz; not a wall clock\)\.\r\nDhruthiOS> \z')
+                    if (!$tickMatch.Success) { throw "Invalid tick report: $reply" }
+                    return [uint64]$tickMatch.Groups[1].Value
+                }
+                $firstTicks = Read-MonitorTicks
+                Start-Sleep -Milliseconds 150
+                $secondTicks = Read-MonitorTicks
+                if ($firstTicks -eq 0 -or $secondTicks -le $firstTicks) { throw 'Timer did not advance while idle.' }
                 $initial = Invoke-MonitorCommand 'memory'
                 $pattern = '\Amemory\r\nMemory \(4096-byte pages\): managed=(\d+) free=(\d+) used=(\d+) excluded=(\d+)\r\nPhysical address limit: 1 GiB; kernel and reserved regions excluded\.\r\nDhruthiOS> \z'
                 $match = [regex]::Match($initial, $pattern)
@@ -136,7 +147,7 @@ try {
                 if ($managed -lt 2 -or $managed -ne $free -or $used -ne 0 -or $managed -gt 262144) {
                     throw 'Implausible initial memory counts.'
                 }
-                foreach ($command in @('memoryx','memtestx')) {
+                foreach ($command in @('memoryx','memtestx','ticksx')) {
                     $actual = Invoke-MonitorCommand $command
                     if ($actual -cne ($command + "`r`n" + $unknown + $prompt)) {
                         throw "Prefix matching error for $command"
@@ -149,6 +160,8 @@ try {
                     }
                     if ((Invoke-MonitorCommand 'memory') -cne $initial) { throw 'Memory counts changed after test.' }
                 }
+                if ((Read-MonitorTicks) -le $secondTicks) { throw 'Timer stopped after memory commands.' }
+                Write-Output "PASS: timer idle/wake and continued delivery after memory tests, RAM $ram"
                 Write-Output "PASS: monitor counts, exact command matching and 10 leak-free memory tests, RAM $ram"
             }
         } finally {

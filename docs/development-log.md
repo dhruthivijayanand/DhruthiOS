@@ -287,3 +287,24 @@ exact capacity, overflow, sticky failure, null strings, zero and UINT64_MAX.
 Known limits: single CPU, polling, interrupts disabled in monitor; no heap or user
 processes. Partial-allocation/readback-failure cleanup is implemented but not
 fault-injected. Timer behavior remains in the separate tested timer image.
+
+## 2026-10-24 — Final integration and release workflow
+
+Connected the existing PIT/PIC timer to monitor idle waits using STI; HLT; CLI.
+IF remains clear during commands and allocation. Added ticks as a delivered
+interrupt counter, explicitly not an uptime clock. QEMU monitor now disables
+HPET consistently with the focused timer tests.
+
+Targeted monitor tests passed at 128/256 MiB with all 14 editing scenarios,
+ten memory cycles, exact suffix rejection and timer advancement before/after.
+Evidence: build/monitor/test-ca23fdfadb874e369a84ccdfca500936/serial-{128M,256M}.log.
+
+Observed a stray VoidTaskResult from a .NET asynchronous write completion in
+the PowerShell harness. Explicitly discarded the completion value to prevent
+it from entering a function's returned serial-response string.
+
+Added package.ps1: clean committed source archive, independent extracted build,
+full test suite, then source/prebuilt/evidence ZIP and checksums. Release-time
+results are generated into RELEASE.json and validation/ only after success.
+verify-package.ps1 checks every recorded file without changing source or Git.
+The package is scoped to the educational kernel; new OS subsystems are deferred.

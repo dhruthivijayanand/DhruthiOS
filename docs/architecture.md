@@ -32,7 +32,7 @@ runtime or dynamic linker is linked into the image. The monitor includes our C p
    configure IRQ0 and enter the register-preservation probe. The echo image runs
    the legacy serial interface; the commands image tests response selection.
 5. The monitor image initializes a physical-page pool, then runs the shared input
-   loop with C++ help/about/memory/memtest commands. It keeps interrupts disabled.
+   loop with C++ help/about/memory/memtest commands. It initializes the timer, enables IRQ0 while waiting, and keeps interrupts disabled during service calls.
 
 The serial driver does not acquire locks. Timer handlers never call it, and
 current callers serialize writes on the single CPU. A future interrupt-driven
@@ -81,3 +81,6 @@ checks their contents, returns them, and verifies the initial free count.
 Additional modes: echo (legacy monitor), commands, memmap, pmm, directmap, format
 (C++ boundary tests), and monitor (integrated demo). Each uses build/<mode>/.
 See [monitor.md](monitor.md) for design, testing and explicit limitations.
+
+The final monitor adds ticks and timer wakeups. Serial polling occurs after each
+idle wake; no allocator or serial service is called from the timer handler.

@@ -4,6 +4,7 @@ extern "C" {
 #include "commands.h"
 #include "direct_map.h"
 #include "serial.h"
+#include "timer.h"
 }
 namespace {
 page_allocator pool; // Static zero initialization; no runtime constructor.
@@ -26,6 +27,13 @@ bool memory_report() {
     report.append(" excluded=");
     report.decimal(pool.excluded);
     report.append("\r\nPhysical address limit: 1 GiB; kernel and reserved regions excluded.\r\n");
+    return report.text() && serial_write(report.text());
+}
+bool ticks_report() {
+    TextBuffer<128> report;
+    report.append("Timer interrupts received: ");
+    report.decimal(timer_ticks());
+    report.append(" (nominal 100 Hz; not a wall clock).\r\n");
     return report.text() && serial_write(report.text());
 }
 bool memory_test() {
@@ -74,11 +82,14 @@ extern "C" bool monitor_execute(const char *line, unsigned length) {
         return serial_write("Commands:\r\n  help  - list commands\r\n"
                             "  about - describe DhruthiOS\r\n"
                             "  memory - show page counts\r\n"
-                            "  memtest - test two pages and return them\r\n");
+                            "  memtest - test two pages and return them\r\n"
+                            "  ticks - show delivered timer interrupts\r\n");
     if (matches(line, length, "about", 5))
         return serial_write("DhruthiOS: an educational x86-64 kernel.\r\n"
                             "Assembly interrupt entry, C services, C++ monitor.\r\n"
                             "Running inside QEMU; commands execute in the kernel.\r\n");
+    if (matches(line, length, "ticks", 5))
+        return ticks_report();
     if (matches(line, length, "memory", 6))
         return memory_report();
     if (matches(line, length, "memtest", 7))

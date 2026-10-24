@@ -9,8 +9,7 @@ programs PIT channel 0 in mode 2 with divisor 11932, and unmasks only IRQ0.
 The requested rate is approximately 100 Hz; its accuracy has not been measured.
 Timer test VMs disable HPET to keep routing fixed.
 
-Normal boot does not call `timer_init`. Activation is confined to the timer
-images until a kernel event loop needs it. This is not a scheduler or an APIC
+Normal boot does not call `timer_init`. The monitor now activates the timer for idle waiting; the focused test images remain. This is not a scheduler or an APIC
 driver. The PIC writes omit physical-device I/O delays because the supported
 target is QEMU.
 
@@ -53,3 +52,7 @@ other IRQs, FP/SIMD contexts, SMP, and nested faults.
 
 - [Intel SDM](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html): interrupt return and APIC mode transitions.
 - QEMU 11.1.0: [PIT](https://github.com/qemu/qemu/blob/v11.1.0/hw/timer/i8254.c), [PIT clock](https://github.com/qemu/qemu/blob/v11.1.0/include/hw/timer/i8254.h), [PIC](https://github.com/qemu/qemu/blob/v11.1.0/hw/intc/i8259.c), [APIC routing](https://github.com/qemu/qemu/blob/v11.1.0/hw/intc/apic.c).
+
+The integrated monitor tests ticks before and after memory commands and requires
+increasing counts while idle. It runs services with IF clear and enables IRQ0
+only during STI; HLT; CLI waits. This counts delivered events, not wall-clock uptime.

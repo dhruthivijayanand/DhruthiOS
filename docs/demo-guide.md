@@ -11,13 +11,14 @@ If firmware output is initially visible, allow boot to finish. Look for
 'DhruthiOS monitor ready. Type help.' followed by 'DhruthiOS> '.
 
 ## Demonstrate in this order
-1. help — lists the four available commands.
+1. help — lists the five available commands.
 2. about — explains the kernel and language roles.
 3. memory — displays managed, free, used and excluded usable page counts.
 4. memtest — temporarily borrows two pages, tests every byte and returns them.
 5. memory — verify free matches its previous value.
 6. Type helx, Backspace, p, Enter — editing produces help.
-7. Type an unknown command — the monitor explains how to get help.
+7. Type ticks twice, with a pause between them, to see timer interrupts increase.
+8. Type an unknown command — the monitor explains how to get help.
 
 Each page is 4096 bytes. 'used=0' means this pool has no outstanding allocations;
 the kernel itself occupies separate memory that was never added to the free pool.
@@ -31,7 +32,7 @@ serial I/O and an interrupt table, validates the memory map, and manages physica
 pages. The command monitor lets me inspect that pool and test allocated memory.
 I use C for low-level services, Assembly for architecture-specific entry and I/O,
 and a limited C++ component for monitor commands and bounded text formatting.
-Separate tests verify invalid-opcode handling and returning timer interrupts.
+The monitor waits for timer interrupts when idle; separate tests verify fault handling and register preservation.
 There are no user processes, filesystem, network stack or kernel-owned page tables.”
 
 Explain this in your own words; do not memorize terms you cannot explain.
@@ -65,3 +66,5 @@ the automated test suite.
 
 Avoid claims of production readiness, a custom bootloader, user-space isolation,
 your own virtual-memory subsystem, or interrupt-driven keyboard input.
+
+For submission ZIP creation and a launch that needs QEMU but no compiler, see [release.md](release.md).

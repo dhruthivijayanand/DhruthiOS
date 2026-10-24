@@ -124,6 +124,7 @@ _Noreturn void kmain(void) {
         (void)serial_write("PANIC: memory initialization failed\r\n");
         halt_forever();
     }
+    timer_init();
     if (!serial_write("DhruthiOS monitor ready. Type help.\r\nDhruthiOS> ")) {
 #else
     if (!serial_write("ECHO: type a short line, then press Enter\r\n")) {
@@ -134,6 +135,11 @@ _Noreturn void kmain(void) {
     for (;;) {
         char character;
         if (!serial_try_read(&character)) {
+#ifdef DHRUTHIOS_MONITOR
+            /* IF is clear here. STI delays IRQ recognition through HLT.
+             * The periodic IRQ0 wakes us; CLI restores service-call contracts. */
+            __asm__ volatile("sti; hlt; cli" : : : "memory");
+#endif
             continue;
         }
         if (previous_was_cr && character == '\n') {
