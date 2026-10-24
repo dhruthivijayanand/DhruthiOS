@@ -1,37 +1,32 @@
+#include "commands.h"
+#include "exceptions.h"
+#include "serial.h"
+#include "timer.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "exceptions.h"
-#include "timer.h"
-#include "serial.h"
-#if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER)
+#if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) || defined(DHRUTHIOS_TEST_COMMANDS)
 #include "kernel-tests.h"
 #endif
 
 /* Limine protocol markers and base revision, from the protocol specification.
  * The linker preserves these arrays in this order. They are not CPU opcodes. */
-__attribute__((used, section(".limine_start"), aligned(8)))
-static volatile uint64_t requests_start[] = {
-    0xf6b8f4b39de7d1ae, 0xfab91a6940fcb9cf,
-    0x785c6ed015d3e316, 0x181e920a7852b9d9
-};
-__attribute__((used, section(".limine_requests"), aligned(8)))
-static volatile uint64_t base_revision[] = {
-    0xf9562b2d5c95a6c8, 0x6a7b384944536bdc, 6
-};
-__attribute__((used, section(".limine_end"), aligned(8)))
-static volatile uint64_t requests_end[] = {
-    0xadc0e0531bb10d03, 0x9572709f31764c62
-};
+__attribute__((used, section(".limine_start"),
+               aligned(8))) static volatile uint64_t requests_start[] = {
+    0xf6b8f4b39de7d1ae, 0xfab91a6940fcb9cf, 0x785c6ed015d3e316, 0x181e920a7852b9d9};
+__attribute__((used, section(".limine_requests"),
+               aligned(8))) static volatile uint64_t base_revision[] = {0xf9562b2d5c95a6c8,
+                                                                        0x6a7b384944536bdc, 6};
+__attribute__((used, section(".limine_end"),
+               aligned(8))) static volatile uint64_t requests_end[] = {0xadc0e0531bb10d03,
+                                                                       0x9572709f31764c62};
 
-static _Noreturn void halt_forever(void)
-{
+static _Noreturn void halt_forever(void) {
     for (;;) {
-        __asm__ volatile ("cli; hlt" : : : "memory");
+        __asm__ volatile("cli; hlt" : : : "memory");
     }
 }
 
-_Noreturn void exception_panic_ud(uint64_t rip)
-{
+_Noreturn void exception_panic_ud(uint64_t rip) {
     static const char digits[] = "0123456789abcdef";
     char address[19] = "0x0000000000000000";
     for (unsigned i = 0; i < 16; ++i) {
@@ -43,14 +38,12 @@ _Noreturn void exception_panic_ud(uint64_t rip)
     halt_forever();
 }
 
-_Noreturn void exception_panic_unhandled(void)
-{
+_Noreturn void exception_panic_unhandled(void) {
     (void)serial_write("PANIC: unhandled exception or interrupt; halting\r\n");
     halt_forever();
 }
 
-_Noreturn void kmain(void)
-{
+_Noreturn void kmain(void) {
     serial_init();
     if (base_revision[2] != 0) {
         (void)serial_write("DhruthiOS: unsupported Limine base revision\r\n");
@@ -82,9 +75,15 @@ _Noreturn void kmain(void)
     (void)serial_write("PASS: five timer waits completed; kernel execution resumed\r\n");
     halt_forever();
 #endif
+#ifdef DHRUTHIOS_TEST_COMMANDS
+    if (!command_tests_run()) {
+        (void)serial_write("FAIL: command tests failed\r\n");
+    }
+    halt_forever();
+#endif
 #ifdef DHRUTHIOS_TEST_ECHO
-/* Next milestone: literally just collect a bounded line of input before processing it. */
- char line[32];
+    /* Bounded, polled serial command interface; no user-space boundary. */
+    char line[32];
     unsigned length = 0;
     bool previous_was_cr = false;
     bool discard_line = false;
@@ -99,95 +98,70 @@ _Noreturn void kmain(void)
             continue;
         }
         if (previous_was_cr && character == '\n') {
-    previous_was_cr = false;
-    continue;
-}
-previous_was_cr = (character == '\r');
-if (discard_line) {
-    if (character == '\r' || character == '\n') {
-        discard_line = false;
-        length = 0;
-        if (!serial_write("DhruthiOS> ")) {
-            halt_forever();
+            previous_was_cr = false;
+            continue;
         }
-    }
-    continue;
-}
-if (character == '\b' || character == 127) {
-    if (length > 0) {
-        --length;
-        if (!serial_write("\b \b")) {
-            halt_forever();
+        previous_was_cr = (character == '\r');
+        if (discard_line) {
+            if (character == '\r' || character == '\n') {
+                discard_line = false;
+                length = 0;
+                if (!serial_write("DhruthiOS> ")) {
+                    halt_forever();
+                }
+            }
+            continue;
         }
-    }
-    continue;
-}
+        if (character == '\b' || character == 127) {
+            if (length > 0) {
+                --length;
+                if (!serial_write("\b \b")) {
+                    halt_forever();
+                }
+            }
+            continue;
+        }
 
         if (character == '\r' || character == '\n') {
             line[length] = '\0';
             if (!serial_write("\r\n")) {
-    halt_forever();
-}
+                halt_forever();
+            }
 
-            const char *response = "Unknown command. Try help.\r\n";
+            const char *response = command_response(line, length);
 
-if (length == 0) {
-    response = "No command entered.\r\n";
-} else if (length == 4 &&
-           line[0] == 'h' &&
-           line[1] == 'e' &&
-           line[2] == 'l' &&
-           line[3] == 'p') {
-     response =
-        "Commands:\r\n"
-        "  help  - list commands\r\n"
-        "  about - describe DhruthiOS\r\n";
-} else if (length == 5 &&
-           line[0] == 'a' &&
-           line[1] == 'b' &&
-           line[2] == 'o' &&
-           line[3] == 'u' &&
-           line[4] == 't') {
-    response =
-        "DhruthiOS: an educational x86-64 kernel.\r\n"
-        "Written in C and Assembly; running inside QEMU.\r\n"
-        "This command interface runs inside the kernel.\r\n";
-}
+            if (!serial_write(response)) {
+                halt_forever();
+            }
 
-
-if (!serial_write(response)) {
-    halt_forever();
-}
-
-length = 0;
-if (!serial_write("DhruthiOS> ")) {
-    halt_forever();
-}
-continue;
+            length = 0;
+            if (!serial_write("DhruthiOS> ")) {
+                halt_forever();
+            }
+            continue;
         }
 
         if (character < ' ' || character > '~') {
             continue;
         }
 
-       if (length >= sizeof(line) - 1) {
-    discard_line = true;
-    if (!serial_write("\r\nLine too long. Press Enter to try again.\r\n")) {
-        halt_forever();
-    }
-    continue;
-}
+        if (length >= sizeof(line) - 1) {
+            discard_line = true;
+            if (!serial_write("\r\nLine too long. Press Enter to try again.\r\n")) {
+                halt_forever();
+            }
+            continue;
+        }
 
         line[length] = character;
         ++length;
 
-        char visible[2] = { character, '\0' };
-if (!serial_write(visible)) {
-    halt_forever();
-}
+        char visible[2] = {character, '\0'};
+        if (!serial_write(visible)) {
+            halt_forever();
+        }
     }
 #endif
-(void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
+    (void)serial_write("DhruthiOS: boot protocol accepted; CPU halted\r\n");
     halt_forever();
 }
-

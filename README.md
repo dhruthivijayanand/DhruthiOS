@@ -1,108 +1,98 @@
 # DhruthiOS
 
-A small x86-64 kernel in freestanding C and Assembly, developed on Windows and
-run under QEMU. The current work covers boot, fault reporting, and returning
-hardware interrupts.
+A small educational x86-64 kernel in freestanding C and Assembly, developed
+on Windows and run under QEMU. It demonstrates boot, fault reporting, returning
+hardware interrupts, and an interactive serial command interface.
 
-Normal boot loads an IDT, writes diagnostics to COM1, and halts. Separate test
-images exercise an invalid-opcode exception and a PIT timer interrupt. There is
-no interactive shell yet.
+Normal boot prints diagnostics and halts. Separate images exercise exceptions,
+timer interrupts, commands, and the interactive monitor. It is not a production
+OS: no allocator, user processes, filesystem, networking, or C++ component yet.
 
-## Build and test
+## Build, test, demonstrate
 
-Requirements: Windows PowerShell 5.1 or newer, LLVM with Clang and LLD, and QEMU
-with `share/edk2-x86_64-code.fd`. Tested with LLVM 23.1.1 and QEMU 11.1.0.
-Limine 12.5.2 is included under `vendor/limine`.
+Requirements: Windows PowerShell 5.1 or newer, LLVM Clang/LLD and QEMU with
+`share/edk2-x86_64-code.fd`. Tested tools: LLVM 23.1.1, QEMU 11.1.0.
+Limine 12.5.2 is included in vendor/limine.
 
-From the repository root:
-
-```powershell
-./scripts/check.ps1
-```
-
-This builds the kernel and runs eight QEMU cases: three normal boots, two fault
-checks, two timer-return checks, and one masked-timer control. Each VM closes
-automatically. Logs are saved under `build/`.
-
-Scripts look for tools on `PATH` and in the standard installation directories.
-For a custom installation, set the directories in the current PowerShell session:
-
-```powershell
-$env:LLVM_BIN = 'D:\Program Files\LLVM\bin'
-$env:QEMU_DIR = 'C:\Program Files\qemu'
-./scripts/check.ps1
-```
-
-If Windows blocks local scripts, run the following in that terminal, then retry.
-The setting ends when the terminal closes.
+From the repository folder, allow local scripts for this terminal session if
+needed, and configure your installed tool directories:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+$env:LLVM_BIN = 'D:\Program Files\LLVM\bin'
+$env:QEMU_DIR = 'C:\Program Files\qemu'
+& ./scripts/check.ps1
 ```
 
-To build and run normal boot separately:
+The check script runs 12 QEMU instances: 3 normal boots, 2 exception tests,
+2 timer returns, 1 masked-timer control, 2 command-test boots (17 cases each),
+and 2 serial integration runs (14 scenarios each). VMs close automatically;
+logs stay in build/. The existing eight regressions and both new test suites
+passed separately on 2026-10-24.
+
+To demonstrate the interactive monitor:
 
 ```powershell
-./scripts/build.ps1
-./scripts/run.ps1
+& ./scripts/build.ps1 -Mode echo
+& ./scripts/run-echo.ps1
 ```
 
-Expected kernel output:
+In the QEMU window press **Ctrl+Alt+2** for serial output. Type `help` or
+`about`, then Enter. Backspace edits input. Close the window to exit.
+Stop QEMU before rebuilding its image. The monitor accepts up to 31 printable
+characters and rejects an oversized line until Enter, then offers a fresh prompt.
+It actively polls and does not support arrows, escape sequences, or Unicode.
 
-```text
-DhruthiOS: kernel entered
-DhruthiOS: IDT loaded
-DhruthiOS: boot protocol accepted; CPU halted
-```
+Normal boot is still available with build.ps1 (default mode) and run.ps1.
+The normal runner uses the terminal: Ctrl+A then X requests exit, but some
+Windows terminals do not pass this sequence through; close that QEMU process
+in Task Manager if necessary.
 
-The interactive runner uses QEMU's terminal console. Press Ctrl+A, release both
-keys, then press X to exit. If the terminal does not pass that sequence through,
-close that QEMU process in Task Manager. Stop the VM before rebuilding: its
-virtual disk reads the files in `build/esp`.
-
-## What is implemented
+## Status
 
 | Component | Status | Evidence |
 | --- | --- | --- |
-| UEFI/Limine boot and serial output | IMPLEMENTED | Repeated boots at 128 and 256 MiB |
-| Fatal invalid-opcode handler | IMPLEMENTED | Saved RIP matches the fault symbol and QEMU trace |
-| PIT/PIC timer interrupt | IMPLEMENTED in test images | Repeated returns, register/flag checks, masked-IRQ control |
-| General exception handling | PARTIALLY IMPLEMENTED | IDT installed; generic fatal fallback is UNTESTED |
-| Physical memory allocator and kernel shell | PLANNED | No implementation yet |
-| User space, scheduling, filesystem, networking | FUTURE WORK | Outside the current kernel |
+| UEFI/Limine boot and serial output | IMPLEMENTED | Repeated 128/256 MiB boots |
+| Fatal invalid-opcode handler | IMPLEMENTED | Saved RIP and QEMU fault trace agree |
+| PIT/PIC returning timer interrupt | IMPLEMENTED in test images | Registers/flags, tick count, masked control |
+| General exceptions | PARTIALLY IMPLEMENTED | Generic fallback and nested faults remain UNTESTED |
+| Command selection | IMPLEMENTED | 17 automated cases per memory size |
+| Serial kernel monitor | PROTOTYPE | 14 automated serial scenarios per memory size |
+| Memory allocator and limited C++ | PLANNED | Not implemented |
+| User space, scheduling, filesystem, networking | FUTURE WORK | Not implemented |
 
-## Design
+## Architecture
 
 ```text
-QEMU PC / UEFI
-       |
-     Limine -- loads ELF, supplies stack and initial page tables
-       |
-     kmain -- checks protocol revision, initializes serial output and IDT
-       |
-       +-- normal image: halt
-       +-- fault image: UD2 -> vector 6 -> fatal diagnostic
-       +-- timer image: PIT -> PIC -> vector 32 -> tick count -> IRETQ
+QEMU PC / UEFI -> Limine -> kmain
+                             |
+                             +-- normal: initialize serial and IDT, halt
+                             +-- ud2: vector 6 -> fatal diagnostic
+                             +-- timer: PIT -> PIC -> vector 32 -> IRETQ
+                             +-- echo: serial bytes -> bounded line
+                                              -> command_response -> serial output
 ```
 
-The kernel runs on one virtual CPU. C owns initialization and device state;
-Assembly handles port I/O and interrupt entry/return. It uses Limine's memory
-mappings and has no allocator or user/kernel isolation. There is no C++ runtime
-or C++ component at this stage.
+The kernel uses one virtual CPU and Limine's initial stack and page tables.
+C owns device state and command logic; Assembly handles port I/O and interrupt
+entry/return. The command interface executes inside the kernel, not in isolated
+user space. No hosted runtime or dynamic allocation is used.
 
- [Architecture](docs/architecture.md): source layout and kernel contracts.
- [Boot](docs/boot-process.md): handoff, ELF layout, and serial output.
- [Exceptions](docs/interrupts.md) and [timer](docs/timer.md): entry paths and limits.
- [Testing](docs/testing.md): commands, assertions, and failure diagnosis.
- [Development log](docs/development-log.md): results and problems encountered.
- [Boot decision](docs/technical-decisions/0001-uefi-limine.md): why UEFI and Limine.
+## Documentation
+
+- [Architecture](docs/architecture.md) and [boot](docs/boot-process.md).
+- [Exceptions](docs/interrupts.md) and [timer](docs/timer.md).
+- [Command contracts, demo and automated evidence](docs/commands.md).
+- [Existing regression tests](docs/testing.md).
+- [Development log](docs/development-log.md).
+- [UEFI/Limine decision](docs/technical-decisions/0001-uefi-limine.md).
 
 Validation is limited to QEMU's PC model with TCG. There is no real-hardware
-support claim, bootable ISO, or installer. The next substantial task is reading
-the boot memory map and implementing a physical page allocator.
+support claim, installer, bootable ISO, or production reliability claim.
+Next: inspect the boot memory map and implement a physical page allocator.
 
 ## Dependencies
 
-[Limine](https://github.com/limine-bootloader/limine) provides the bootloader.
-Its BSD-2-Clause license and recorded binary hashes are retained in
+[Limine](https://github.com/limine-bootloader/limine) supplies the bootloader.
+Its BSD-2-Clause license and recorded binary hashes remain in
 [vendor/limine](vendor/limine/PROVENANCE.md).

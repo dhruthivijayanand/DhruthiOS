@@ -6,4 +6,5 @@ void exception_test_ud(void);
 /* Returns with IF and DF clear; verifies state restored by IRQ0 entry/exit. */
 bool timer_wait_probe(void);
 bool timer_handler_state_ok(void);
+bool command_tests_run(void);
 #endif

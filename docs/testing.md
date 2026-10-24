@@ -62,3 +62,12 @@ kernel regression suite.
 Change one layer at a time. Preserve the failing serial and CPU logs before
 rebuilding. Passing tests on the supported QEMU configuration do not establish
 real-hardware compatibility, SMP correctness, or fault recovery.
+
+## Command and serial tests
+
+The aggregate check also runs `test-commands.ps1` (17 in-kernel command cases
+at each of 128/256 MiB) and `test-echo.ps1` (14 serial scenarios at each memory
+size using a local Windows named pipe). Both build isolated images. This brings
+the suite to twelve QEMU instances. See [commands.md](commands.md) for exact
+coverage, current evidence and limitations. Serial waits have a 30-second
+per-response deadline, plus bounded connection and write timeouts.

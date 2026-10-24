@@ -7,8 +7,9 @@ code runs at kernel privilege on one CPU. There are no processes or system calls
 
 | Location | Responsibility |
 | --- | --- |
-| `src/kernel/main.c` | Boot handshake, initialization order, fatal diagnostics |
-| `src/drivers/serial.c` | Polled COM1 output |
+| `src/kernel/main.c` | Boot handshake, initialization, fatal diagnostics, bounded input loop |
+| `src/kernel/commands.c` | Hardware-independent command response selection |
+| `src/drivers/serial.c` | Polled COM1 input/output |
 | `include/arch/x86_64/io.h` | Byte-sized port I/O primitives |
 | `src/arch/x86_64/exceptions.c` | IDT layout and gate installation |
 | `src/arch/x86_64/exceptions.S` | Fatal exception entry stubs |
@@ -28,7 +29,8 @@ runtime, allocator, or dynamic linker is linked into the image.
 2. `kmain` configures serial output and checks the base-revision handshake.
 3. `exceptions_init` installs the IDT while maskable interrupts are disabled.
 4. Normal boot logs completion and halts. Test images instead exercise #UD or
-   configure IRQ0 and enter the register-preservation probe.
+   configure IRQ0 and enter the register-preservation probe. The echo image runs
+   the serial command interface; the commands image tests response selection.
 
 The serial driver does not acquire locks. Timer handlers never call it, and
 current callers serialize writes on the single CPU. A future interrupt-driven

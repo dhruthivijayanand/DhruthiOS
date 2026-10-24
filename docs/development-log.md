@@ -185,3 +185,29 @@ Manual QEMU tests passed:
 Debugging lesson: an extra closing brace ended a block too early,
 causing several compiler errors. Removing that brace fixed compilation.
 
+
+## 2026-10-24 — Command separation and automated serial tests
+
+Moved the accidentally named header from docs into include/commands.h.
+Extracted command selection to src/kernel/commands.c and formatted main.c.
+Added isolated command tests and a short graphical echo launcher.
+
+Verified: 17 command cases and 14 serial scenarios at both 128/256 MiB.
+Serial tests include CR/LF/CRLF, Backspace/DEL, capacity edits, overflow
+suffix discard, and recovery. All eight existing regression cases passed.
+The graphical wrapper was syntax-checked, not manually operated today.
+
+Logs:
+- build/commands/test-4e1acb0ab8d7425b8bd5de099f365831/
+- build/echo/test-121fc351435041a78219757b32b2dbaf/
+- build/test-c324caeac5c544a8b7d85e1f51993360/
+- build/ud2/test-f7eaf308b5bc4e669831338e4abe2a45/
+- build/timer/test-0f5166ba50804a379420fd30db3cd44b/
+
+Debugging: local TCP connection timed out in this environment. Replaced it
+with a Windows named pipe. Initial synchronous pipe mode stalled writes while
+a read was pending; asynchronous mode fixed the test transport.
+
+No allocator, C++, scheduler or user isolation added. Monitor remains a
+prototype with polling and unsupported terminal escape sequences.
+See commands.md for contracts, reproduction and evidence.

@@ -1,6 +1,6 @@
 param(
     [string]$LlvmBin,
-   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo')][string]$Mode = 'normal'
+   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands')][string]$Mode = 'normal'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -25,12 +25,14 @@ try {
         '-mgeneral-regs-only', '-mcmodel=kernel', '-fno-unwind-tables',
         '-fno-asynchronous-unwind-tables', '-Wall', '-Wextra', '-Werror', '-O2', '-g', '-Iinclude')
     if ($Mode -eq 'ud2') { $flags += '-DDHRUTHIOS_TEST_UD2=1' }
+    if ($Mode -eq 'commands') { $flags += '-DDHRUTHIOS_TEST_COMMANDS=1' }
     if ($Mode -eq 'echo') { $flags += '-DDHRUTHIOS_TEST_ECHO=1' }
     if ($Mode -like 'timer*') { $flags += '-DDHRUTHIOS_TEST_TIMER=1' }
     if ($Mode -eq 'timer-masked') { $flags += '-DDHRUTHIOS_TIMER_MASKED=1' }
     if ($Mode -ne 'normal') { $flags += '-Itests/kernel' }
     $sources = @(
         @{ Path = 'src/kernel/main.c'; Object = 'main.o' },
+        @{ Path = 'src/kernel/commands.c'; Object = 'commands.o' },
         @{ Path = 'src/drivers/serial.c'; Object = 'serial.o' },
         @{ Path = 'src/arch/x86_64/exceptions.c'; Object = 'exceptions.o' },
         @{ Path = 'src/arch/x86_64/exceptions.S'; Object = 'exception-entry.o' },
@@ -39,6 +41,7 @@ try {
     )
     if ($Mode -eq 'ud2') { $sources += @{ Path = 'tests/kernel/ud2.S'; Object = 'ud2-test.o' } }
     if ($Mode -like 'timer*') { $sources += @{ Path = 'tests/kernel/timer-probe.S'; Object = 'timer-probe.o' } }
+    if ($Mode -eq 'commands') { $sources += @{ Path = 'tests/kernel/commands-test.c'; Object = 'commands-test.o' } }
     $objects = @()
     foreach ($source in $sources) {
         $object = "$outputDir/$($source.Object)"
