@@ -6,7 +6,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) ||                                \
-    defined(DHRUTHIOS_TEST_COMMANDS) || defined(DHRUTHIOS_TEST_MEMMAP)
+    defined(DHRUTHIOS_TEST_COMMANDS) || defined(DHRUTHIOS_TEST_MEMMAP) ||                          \
+    defined(DHRUTHIOS_TEST_PMM)
 #include "kernel-tests.h"
 #endif
 
@@ -89,6 +90,12 @@ _Noreturn void kmain(void) {
         halt_forever();
     }
     (void)serial_write("PASS: memory map inspected; no RAM allocated\r\n");
+    halt_forever();
+#endif
+#ifdef DHRUTHIOS_TEST_PMM
+    if (!pmm_tests_run()) {
+        (void)serial_write("FAIL: allocator milestone\r\n");
+    }
     halt_forever();
 #endif
 #ifdef DHRUTHIOS_TEST_ECHO

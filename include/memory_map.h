@@ -20,5 +20,7 @@ enum { MEMORY_USABLE = 0, MEMORY_BOOTLOADER = 5, MEMORY_MAP_LIMIT = 1024 };
  * Never dereferences entry base addresses or writes to described memory. */
 const char *memory_map_validate(const struct boot_memory_response *map,
                                 struct memory_summary *summary);
+/* Borrowed bootloader pointers: never reclaim their backing memory. */
+const struct boot_memory_response *memory_map_get(void);
 bool memory_map_report(void);
 #endif

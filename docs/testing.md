@@ -68,10 +68,14 @@ real-hardware compatibility, SMP correctness, or fault recovery.
 The aggregate check also runs `test-commands.ps1` (17 in-kernel command cases
 at each of 128/256 MiB) and `test-echo.ps1` (14 serial scenarios at each memory
 size using a local Windows named pipe). Both build isolated images. This brings
-the suite to twelve QEMU instances. See [commands.md](commands.md) for exact
+the command/serial subtotal to twelve QEMU instances. See [commands.md](commands.md) for exact
 coverage, current evidence and limitations. Serial waits have a 30-second
 per-response deadline, plus bounded connection and write timeouts.
 
 The suite also includes test-memmap.ps1: three memory-map boots at 128/256/512 MiB,
 20 validator checks per boot, and independent checks of usable totals. The aggregate
-suite now schedules 15 VMs. See [memory-management.md](memory-management.md).
+subtotal is 15 VMs. See [memory-management.md](memory-management.md).
+
+The allocator suite test-pmm.ps1 adds two VMs (128/256 MiB), bringing check.ps1
+to 17 runs. It covers invalid operations, capacity boundaries, unique usable page
+allocation through exhaustion, and return/reuse of every page. See [physical-pages.md](physical-pages.md).

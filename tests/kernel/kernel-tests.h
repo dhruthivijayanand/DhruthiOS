@@ -8,4 +8,5 @@ bool timer_wait_probe(void);
 bool timer_handler_state_ok(void);
 bool command_tests_run(void);
 bool memory_map_tests_run(void);
+bool pmm_tests_run(void);
 #endif

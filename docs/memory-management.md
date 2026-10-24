@@ -105,7 +105,7 @@ reserved overlaps differ from usable-memory overlaps; how allocation will
 require ownership tracking, beyond inspecting this map.
 
 Status: read-only memory-map discovery IMPLEMENTED in the tested QEMU images.
-Allocation, freeing, page-table ownership and heap management remain PLANNED.
+Allocation and freeing are now implemented in the separate [physical-page milestone](physical-pages.md). Page-table ownership and heap management remain PLANNED.
 No real-hardware, corrupted-pointer recovery or >1024-entry support claimed.
 
 ## STEP 11 — GIT

@@ -1,6 +1,6 @@
 param(
     [string]$LlvmBin,
-   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap')][string]$Mode = 'normal'
+   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap', 'pmm')][string]$Mode = 'normal'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -27,6 +27,7 @@ try {
     if ($Mode -eq 'ud2') { $flags += '-DDHRUTHIOS_TEST_UD2=1' }
     if ($Mode -eq 'commands') { $flags += '-DDHRUTHIOS_TEST_COMMANDS=1' }
     if ($Mode -eq 'memmap') { $flags += '-DDHRUTHIOS_TEST_MEMMAP=1' }
+    if ($Mode -eq 'pmm') { $flags += '-DDHRUTHIOS_TEST_PMM=1' }
     if ($Mode -eq 'echo') { $flags += '-DDHRUTHIOS_TEST_ECHO=1' }
     if ($Mode -like 'timer*') { $flags += '-DDHRUTHIOS_TEST_TIMER=1' }
     if ($Mode -eq 'timer-masked') { $flags += '-DDHRUTHIOS_TIMER_MASKED=1' }
@@ -46,6 +47,11 @@ try {
     if ($Mode -eq 'memmap') {
         $sources += @{ Path = 'src/memory/memory_map.c'; Object = 'memory-map.o' }
         $sources += @{ Path = 'tests/kernel/memory-map-test.c'; Object = 'memory-map-test.o' }
+    }
+    if ($Mode -eq 'pmm') {
+        $sources += @{ Path = 'src/memory/memory_map.c'; Object = 'memory-map.o' }
+        $sources += @{ Path = 'src/memory/pmm.c'; Object = 'pmm.o' }
+        $sources += @{ Path = 'tests/kernel/pmm-test.c'; Object = 'pmm-test.o' }
     }
     $objects = @()
     foreach ($source in $sources) {

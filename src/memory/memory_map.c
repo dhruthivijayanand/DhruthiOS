@@ -103,3 +103,5 @@ bool memory_map_report(void) {
            serial_write(" usable_pages=") && number(summary.usable_pages, 10) &&
            serial_write("\r\n");
 }
+
+const struct boot_memory_response *memory_map_get(void) { return request.response; }

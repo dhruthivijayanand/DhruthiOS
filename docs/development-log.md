@@ -233,3 +233,19 @@ test sizes. This is not a claimed kernel fix or proof of 64 MiB support.
 
 See memory-management.md for the protocol sources, contracts, policies,
 test evidence, and remaining allocation work.
+
+## 2026-10-24 — Physical page ownership
+
+Implemented a checked next-fit allocator for usable pages below 1 GiB, excluding page zero.
+One byte per page distinguishes reserved/free/allocated; costs 256 KiB per instance.
+Rejected bitmap compression for this first version to keep state transitions explicit.
+No allocated-page contents are accessed and no bootloader memory is reclaimed.
+Synthetic checks cover invalid maps/calls, empty pool, cap crossing, invalid/double frees,
+exhaustion and reuse. Real maps are exhausted with independent uniqueness and range checks,
+then all pages are returned. The final complete check.ps1 passed all 17 QEMU runs.
+Allocator evidence: build/pmm/test-5508dae4de33450ab2cfeccfe5cad33e/boot-{1,2}.log.
+No allocator failure occurred during this milestone; earlier tests remained passing.
+Limitations: one caller, interrupts disabled, 1 GiB cap, no heap or page-content test,
+no protection against stale-pointer lifetime misuse. Normal and echo images stay separate.
+Lesson: allocating a physical address establishes ownership; it does not create a virtual mapping.
+

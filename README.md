@@ -6,7 +6,7 @@ hardware interrupts, and an interactive serial command interface.
 
 Normal boot prints diagnostics and halts. Separate images exercise exceptions,
 timer interrupts, commands, and the interactive monitor. It is not a production
-OS: no allocator, user processes, filesystem, networking, or C++ component yet.
+OS: no user processes, heap, filesystem, networking, or C++ component yet.
 
 ## Build, test, demonstrate
 
@@ -24,9 +24,9 @@ $env:QEMU_DIR = 'C:\Program Files\qemu'
 & ./scripts/check.ps1
 ```
 
-The check script runs 15 QEMU instances: 3 normal boots, 2 exception tests,
+The check script runs 17 QEMU instances: 3 normal boots, 2 exception tests,
 2 timer returns, 1 masked-timer control, 2 command-test boots (17 cases each),
-2 serial integration runs (14 scenarios each), and 3 memory-map runs (20 validator cases each). VMs close automatically;
+2 serial integration runs (14 scenarios each), 3 memory-map runs (20 validator cases each), and 2 allocator runs. VMs close automatically;
 logs stay in build/. The existing eight regressions and both new test suites
 passed on 2026-10-24. The memory-map suite also passed at 128/256/512 MiB.
 
@@ -59,7 +59,8 @@ in Task Manager if necessary.
 | Command selection | IMPLEMENTED | 17 automated cases per memory size |
 | Serial kernel monitor | PROTOTYPE | 14 automated serial scenarios per memory size |
 | Read-only boot memory map | IMPLEMENTED in memmap image | 20 validator cases and independent totals at 128/256/512 MiB |
-| Memory allocator and limited C++ | PLANNED | Not implemented |
+| Physical page allocator | IMPLEMENTED in pmm image | Exhaustion, uniqueness, recovery and invalid-free checks at 128/256 MiB |
+| Heap and limited C++ | PLANNED | Not implemented |
 | User space, scheduling, filesystem, networking | FUTURE WORK | Not implemented |
 
 ## Architecture
@@ -77,7 +78,7 @@ QEMU PC / UEFI -> Limine -> kmain
 The kernel uses one virtual CPU and Limine's initial stack and page tables.
 C owns device state and command logic; Assembly handles port I/O and interrupt
 entry/return. The command interface executes inside the kernel, not in isolated
-user space. No hosted runtime or dynamic allocation is used.
+user space. No hosted runtime is used. The isolated pmm image tracks physical-page ownership; the monitor has no dynamic allocation.
 
 ## Documentation
 
@@ -85,13 +86,13 @@ user space. No hosted runtime or dynamic allocation is used.
 - [Exceptions](docs/interrupts.md) and [timer](docs/timer.md).
 - [Command contracts, demo and automated evidence](docs/commands.md).
 - [Existing regression tests](docs/testing.md).
-- [Memory map and allocation roadmap](docs/memory-management.md).
+- [Memory map](docs/memory-management.md) and [physical page allocation](docs/physical-pages.md).
 - [Development log](docs/development-log.md).
 - [UEFI/Limine decision](docs/technical-decisions/0001-uefi-limine.md).
 
 Validation is limited to QEMU's PC model with TCG. There is no real-hardware
 support claim, installer, bootable ISO, or production reliability claim.
-Next: use the validated boot memory map to implement a physical page allocator.
+Next: safely access allocated pages through the bootloader mappings, then integrate memory diagnostics into the monitor.
 
 ## Dependencies
 
