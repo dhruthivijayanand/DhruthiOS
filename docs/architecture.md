@@ -21,7 +21,7 @@ code runs at kernel privilege on one CPU. There are no processes or system calls
 
 C calls follow the x86-64 System V ABI, even though the compiler runs on Windows.
 Assembly bridges CPU interrupt frames to that ABI. No hosted C library, C++
-runtime, allocator, or dynamic linker is linked into the image.
+runtime or dynamic linker is linked into the image. The monitor includes our C physical-page allocator and a limited C++ command component.
 
 ## Initialization order
 
@@ -30,7 +30,9 @@ runtime, allocator, or dynamic linker is linked into the image.
 3. `exceptions_init` installs the IDT while maskable interrupts are disabled.
 4. Normal boot logs completion and halts. Test images instead exercise #UD or
    configure IRQ0 and enter the register-preservation probe. The echo image runs
-   the serial command interface; the commands image tests response selection.
+   the legacy serial interface; the commands image tests response selection.
+5. The monitor image initializes a physical-page pool, then runs the shared input
+   loop with C++ help/about/memory/memtest commands. It keeps interrupts disabled.
 
 The serial driver does not acquire locks. Timer handlers never call it, and
 current callers serialize writes on the single CPU. A future interrupt-driven
@@ -60,3 +62,22 @@ fault diagnostics are the next architectural work.
 Each variant has its own ELF and boot directory. The deliberate UD2 and register
 probe Assembly are linked only into their corresponding test images. Normal
 boot retains the timer gate and driver, but does not initialize the timer.
+
+
+## Integrated memory services
+
+src/memory/memory_map.c validates the boot map. src/memory/pmm.c tracks free and
+allocated 4096-byte pages below 1 GiB using one byte per page. Only usable memory
+enters the pool; page zero, reserved regions and loader data remain excluded.
+src/memory/direct_map.c discovers Limine's mapping offset and issues borrowed
+pointers only for allocated pages. No page tables are created or reclaimed.
+
+src/kernel/monitor.cpp calls these C services through C language linkage.
+include/text_buffer.hpp provides fixed-capacity C++ formatting without a heap
+or standard library. Global construction and exit-time destruction are forbidden
+by compiler warnings treated as errors. The monitor's memtest borrows two pages,
+checks their contents, returns them, and verifies the initial free count.
+
+Additional modes: echo (legacy monitor), commands, memmap, pmm, directmap, format
+(C++ boundary tests), and monitor (integrated demo). Each uses build/<mode>/.
+See [monitor.md](monitor.md) for design, testing and explicit limitations.

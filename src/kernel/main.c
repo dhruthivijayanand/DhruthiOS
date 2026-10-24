@@ -1,13 +1,15 @@
 #include "commands.h"
 #include "exceptions.h"
 #include "memory_map.h"
+#include "monitor.h"
 #include "serial.h"
 #include "timer.h"
 #include <stdbool.h>
 #include <stdint.h>
 #if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) ||                                \
     defined(DHRUTHIOS_TEST_COMMANDS) || defined(DHRUTHIOS_TEST_MEMMAP) ||                          \
-    defined(DHRUTHIOS_TEST_PMM) || defined(DHRUTHIOS_TEST_DIRECTMAP)
+    defined(DHRUTHIOS_TEST_PMM) || defined(DHRUTHIOS_TEST_DIRECTMAP) ||                            \
+    defined(DHRUTHIOS_TEST_FORMAT)
 #include "kernel-tests.h"
 #endif
 
@@ -104,14 +106,28 @@ _Noreturn void kmain(void) {
     }
     halt_forever();
 #endif
-#ifdef DHRUTHIOS_TEST_ECHO
+#ifdef DHRUTHIOS_TEST_FORMAT
+    if (!format_tests_run()) {
+        (void)serial_write("FAIL: C++ formatting tests\r\n");
+    }
+    halt_forever();
+#endif
+#if defined(DHRUTHIOS_TEST_ECHO) || defined(DHRUTHIOS_MONITOR)
     /* Bounded, polled serial command interface; no user-space boundary. */
     char line[32];
     unsigned length = 0;
     bool previous_was_cr = false;
     bool discard_line = false;
 
+#ifdef DHRUTHIOS_MONITOR
+    if (!monitor_init()) {
+        (void)serial_write("PANIC: memory initialization failed\r\n");
+        halt_forever();
+    }
+    if (!serial_write("DhruthiOS monitor ready. Type help.\r\nDhruthiOS> ")) {
+#else
     if (!serial_write("ECHO: type a short line, then press Enter\r\n")) {
+#endif
         halt_forever();
     }
 
@@ -151,12 +167,18 @@ _Noreturn void kmain(void) {
                 halt_forever();
             }
 
+#ifdef DHRUTHIOS_MONITOR
+            if (!monitor_execute(line, length)) {
+                halt_forever();
+            }
+#else
             const char *response = command_response(line, length);
 
             if (!serial_write(response)) {
                 halt_forever();
             }
 
+#endif
             length = 0;
             if (!serial_write("DhruthiOS> ")) {
                 halt_forever();

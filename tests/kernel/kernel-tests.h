@@ -10,4 +10,5 @@ bool command_tests_run(void);
 bool memory_map_tests_run(void);
 bool pmm_tests_run(void);
 bool direct_map_tests_run(void);
+bool format_tests_run(void);
 #endif

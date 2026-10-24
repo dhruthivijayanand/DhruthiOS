@@ -84,3 +84,9 @@ The direct-map suite test-directmap.ps1 adds two VMs (128/256 MiB), bringing the
 complete suite to 19 runs. Arithmetic guards and ownership rejection precede
 full-byte read/write checks on two allocated pages with opposite patterns.
 Both pages are returned; no freed pointers are dereferenced. See [direct-map.md](direct-map.md).
+
+The full suite now runs 23 VMs: test-format.ps1 adds two C++ formatter boots,
+and test-echo.ps1 -Mode monitor adds two integrated boots. Each monitor run repeats
+the 14 input scenarios, checks parsed memory counts and rejects command suffixes,
+then performs 10 memtest/memory cycles with identical before/after counts.
+See [monitor.md](monitor.md). Failure cleanup branches are not fault-injected.

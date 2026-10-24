@@ -1,5 +1,8 @@
 # Command handling and serial input
 
+This document describes the preserved echo image. The current integrated demo adds
+memory and memtest through a C++ command service; see [monitor.md](monitor.md).
+
 `main.c` owns startup, bounded input collection, editing, and output.
 `src/kernel/commands.c` selects response text. `include/commands.h` declares
 `command_response(line, length)`. It returns immutable static text, does no

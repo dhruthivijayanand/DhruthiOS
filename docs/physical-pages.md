@@ -87,3 +87,7 @@ Use only the existing local Git identity and configured remote.
 Verified 2026-10-24: complete check.ps1 passed all 17 QEMU runs. Allocator logs: build/pmm/test-5508dae4de33450ab2cfeccfe5cad33e/boot-1.log and boot-2.log.
 
 Page-content access is now tested in the separate [direct-map milestone](direct-map.md).
+
+Integration update: the monitor image now uses these services through memory and
+memtest commands. Earlier isolation statements describe this milestone's original
+test image; normal and legacy echo remain unchanged. See [monitor.md](monitor.md).

@@ -1,6 +1,6 @@
 param(
     [string]$LlvmBin,
-   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap', 'pmm', 'directmap')][string]$Mode = 'normal'
+   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap', 'pmm', 'directmap', 'monitor', 'format')][string]$Mode = 'normal'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -29,6 +29,8 @@ try {
     if ($Mode -eq 'memmap') { $flags += '-DDHRUTHIOS_TEST_MEMMAP=1' }
     if ($Mode -eq 'pmm') { $flags += '-DDHRUTHIOS_TEST_PMM=1' }
     if ($Mode -eq 'directmap') { $flags += '-DDHRUTHIOS_TEST_DIRECTMAP=1' }
+    if ($Mode -eq 'monitor') { $flags += '-DDHRUTHIOS_MONITOR=1' }
+    if ($Mode -eq 'format') { $flags += '-DDHRUTHIOS_TEST_FORMAT=1' }
     if ($Mode -eq 'echo') { $flags += '-DDHRUTHIOS_TEST_ECHO=1' }
     if ($Mode -like 'timer*') { $flags += '-DDHRUTHIOS_TEST_TIMER=1' }
     if ($Mode -eq 'timer-masked') { $flags += '-DDHRUTHIOS_TIMER_MASKED=1' }
@@ -60,10 +62,24 @@ try {
         $sources += @{ Path = 'src/memory/direct_map.c'; Object = 'direct-map.o' }
         $sources += @{ Path = 'tests/kernel/direct-map-test.c'; Object = 'direct-map-test.o' }
     }
+    if ($Mode -eq 'monitor') {
+        $sources += @{ Path = 'src/memory/memory_map.c'; Object = 'memory-map.o' }
+        $sources += @{ Path = 'src/memory/pmm.c'; Object = 'pmm.o' }
+        $sources += @{ Path = 'src/memory/direct_map.c'; Object = 'direct-map.o' }
+        $sources += @{ Path = 'src/kernel/monitor.cpp'; Object = 'monitor.o' }
+    }
+    if ($Mode -eq 'format') {
+        $sources += @{ Path = 'tests/kernel/format-test.cpp'; Object = 'format-test.o' }
+    }
     $objects = @()
     foreach ($source in $sources) {
         $object = "$outputDir/$($source.Object)"
         $compileFlags = if ($source.Path.EndsWith('.S')) { @('--target=x86_64-unknown-none-elf', '-g') } else { $flags }
+        if ($source.Path.EndsWith('.cpp')) {
+            $compileFlags = @($flags | Where-Object { $_ -ne '-std=c11' }) +
+                @('-std=c++17', '-fno-exceptions', '-fno-rtti', '-nostdinc++',
+                  '-Wglobal-constructors', '-Wexit-time-destructors')
+        }
         & $clang @compileFlags -c $source.Path -o $object
         if ($LASTEXITCODE -ne 0) { throw "Compilation failed: $($source.Path) (exit $LASTEXITCODE)" }
         $objects += $object

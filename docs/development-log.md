@@ -265,3 +265,25 @@ Lesson: allocation, address translation and pointer lifetime are separate concer
 We reuse bootloader mappings; we do not yet manage page tables or isolate programs.
 The helper trusts Limine and does not prove arbitrary page-table mappings.
 Normal boot and the serial monitor still do not allocate pages.
+
+## 2026-10-24 — Integrated C++ memory monitor
+
+Added monitor mode with help/about/memory/memtest and preserved legacy echo mode.
+C still handles input, device I/O and allocation; C++ handles command dispatch
+and a fixed-capacity text buffer. C language linkage connects the two.
+No exceptions, RTTI, standard library, global constructors or heap are required.
+
+Initial compilation found an extra #endif introduced by an overly broad edit in
+main.c. Removed that one misplaced directive; retained original overflow handling.
+llvm-readelf was unavailable; llvm-readobj confirmed no constructor/destructor arrays.
+
+Final check.ps1 passed all 23 QEMU runs. Integrated monitor logs:
+build/monitor/test-40c092a68cad4149ad8b4bfaca3d95f6/serial-128M.log and serial-256M.log.
+Formatter logs: build/format/test-c71b7e8e176d4f79bbf5b820938c48cf/boot-{1,2}.log.
+Each monitor run passed all 14 serial cases, exact command suffix checks, and ten
+memtest/memory cycles with identical initial/final free counts. C++ tests cover
+exact capacity, overflow, sticky failure, null strings, zero and UINT64_MAX.
+
+Known limits: single CPU, polling, interrupts disabled in monitor; no heap or user
+processes. Partial-allocation/readback-failure cleanup is implemented but not
+fault-injected. Timer behavior remains in the separate tested timer image.

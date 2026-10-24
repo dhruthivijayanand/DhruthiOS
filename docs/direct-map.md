@@ -97,3 +97,7 @@ Milestone: Verify allocated page access through the bootloader direct map.
 
 Verified 2026-10-24: check.ps1 passed all 19 QEMU runs. Direct-map logs:
 build/directmap/test-7c2fe0d48acd4fbfa9c11ff745eede9b/boot-1.log and boot-2.log.
+
+Integration update: the monitor image now uses these services through memory and
+memtest commands. Earlier isolation statements describe this milestone's original
+test image; normal and legacy echo remain unchanged. See [monitor.md](monitor.md).

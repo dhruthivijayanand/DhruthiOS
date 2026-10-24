@@ -1,14 +1,14 @@
-param([string]$LlvmBin, [string]$QemuDir)
+param([string]$LlvmBin, [string]$QemuDir, [ValidateSet('echo','monitor')][string]$Mode = 'echo')
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot/tools.ps1"
 $QemuDir = Resolve-QemuDirectory $QemuDir
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
-    & "$PSScriptRoot/build.ps1" -LlvmBin $LlvmBin -Mode echo
+    & "$PSScriptRoot/build.ps1" -LlvmBin $LlvmBin -Mode $Mode
     $qemu = Join-Path $QemuDir 'qemu-system-x86_64.exe'
     $firmware = Join-Path $QemuDir 'share/edk2-x86_64-code.fd'
-    $logDirectory = 'build/echo/test-' + [guid]::NewGuid().ToString('N')
+    $logDirectory = ("build/$Mode/test-") + [guid]::NewGuid().ToString('N')
     New-Item -ItemType Directory -Path $logDirectory | Out-Null
     foreach ($ram in @('128M', '256M')) {
         $pipeName = 'dhruthios-echo-' + [guid]::NewGuid().ToString('N')
@@ -18,7 +18,7 @@ try {
         $start.UseShellExecute = $false
         $start.CreateNoWindow = $true
         $start.RedirectStandardError = $true
-        $start.Arguments = "-machine pc -accel tcg -m $ram -smp 1 -drive `"if=pflash,format=raw,readonly=on,file=$firmware`" -drive format=raw,snapshot=on,file=fat:build/echo/esp -display none -serial pipe:$pipeName -monitor none -net none -no-reboot"
+        $start.Arguments = "-machine pc -accel tcg -m $ram -smp 1 -drive `"if=pflash,format=raw,readonly=on,file=$firmware`" -drive format=raw,snapshot=on,file=fat:build/$Mode/esp -display none -serial pipe:$pipeName -monitor none -net none -no-reboot"
         $process = [Diagnostics.Process]::Start($start)
         $errorRead = $process.StandardError.ReadToEndAsync()
         $client = $null
@@ -73,11 +73,16 @@ try {
                 }
                 throw "Timeout waiting for '$Expected'. Log: $logPath"
             }
-            $boot = Wait-SerialText -Offset 0 -Expected "ECHO: type a short line, then press Enter`r`n"
+            $ready = if ($Mode -eq 'monitor') { "DhruthiOS monitor ready. Type help.`r`nDhruthiOS> " } else { "ECHO: type a short line, then press Enter`r`n" }
+            $boot = Wait-SerialText -Offset 0 -Expected $ready
             if (!$boot.Contains('DhruthiOS: IDT loaded')) { throw 'Missing startup marker.' }
             $prompt = 'DhruthiOS> '
             $help = "Commands:`r`n  help  - list commands`r`n  about - describe DhruthiOS`r`n"
             $about = "DhruthiOS: an educational x86-64 kernel.`r`nWritten in C and Assembly; running inside QEMU.`r`nThis command interface runs inside the kernel.`r`n"
+            if ($Mode -eq 'monitor') {
+                $help += "  memory - show page counts`r`n  memtest - test two pages and return them`r`n"
+                $about = "DhruthiOS: an educational x86-64 kernel.`r`nAssembly interrupt entry, C services, C++ monitor.`r`nRunning inside QEMU; commands execute in the kernel.`r`n"
+            }
             $unknown = "Unknown command. Try help.`r`n"
             $empty = "No command entered.`r`n"
             $limit = '1234567890123456789012345678901'
@@ -110,6 +115,41 @@ try {
                     throw "Output mismatch: $($case.Name). Log: $logPath"
                 }
                 Write-Output "PASS: serial $($case.Name), RAM $ram"
+            }
+            if ($Mode -eq 'monitor') {
+                function Invoke-MonitorCommand([string]$Command) {
+                    Read-SerialAvailable
+                    $offset = $transcript.Length
+                    $inputBytes = [Text.Encoding]::ASCII.GetBytes($Command + "`r")
+                    $writeTask = $stream.WriteAsync($inputBytes, 0, $inputBytes.Length)
+                    if (!$writeTask.Wait(5000)) { throw 'Monitor write timed out.' }
+                    $writeTask.GetAwaiter().GetResult()
+                    return Wait-SerialText -Offset $offset -Expected $prompt
+                }
+                $initial = Invoke-MonitorCommand 'memory'
+                $pattern = '\Amemory\r\nMemory \(4096-byte pages\): managed=(\d+) free=(\d+) used=(\d+) excluded=(\d+)\r\nPhysical address limit: 1 GiB; kernel and reserved regions excluded\.\r\nDhruthiOS> \z'
+                $match = [regex]::Match($initial, $pattern)
+                if (!$match.Success) { throw "Invalid memory report: $initial" }
+                $managed = [uint64]$match.Groups[1].Value
+                $free = [uint64]$match.Groups[2].Value
+                $used = [uint64]$match.Groups[3].Value
+                if ($managed -lt 2 -or $managed -ne $free -or $used -ne 0 -or $managed -gt 262144) {
+                    throw 'Implausible initial memory counts.'
+                }
+                foreach ($command in @('memoryx','memtestx')) {
+                    $actual = Invoke-MonitorCommand $command
+                    if ($actual -cne ($command + "`r`n" + $unknown + $prompt)) {
+                        throw "Prefix matching error for $command"
+                    }
+                }
+                for ($iteration = 1; $iteration -le 10; ++$iteration) {
+                    $actual = Invoke-MonitorCommand 'memtest'
+                    if ($actual -cne "memtest`r`nMEMTEST PASS: two pages written, verified and returned.`r`n$prompt") {
+                        throw "Memory test $iteration failed: $actual"
+                    }
+                    if ((Invoke-MonitorCommand 'memory') -cne $initial) { throw 'Memory counts changed after test.' }
+                }
+                Write-Output "PASS: monitor counts, exact command matching and 10 leak-free memory tests, RAM $ram"
             }
         } finally {
             if ($client) { $client.Dispose() }
