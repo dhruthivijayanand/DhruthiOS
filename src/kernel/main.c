@@ -7,7 +7,7 @@
 #include <stdint.h>
 #if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) ||                                \
     defined(DHRUTHIOS_TEST_COMMANDS) || defined(DHRUTHIOS_TEST_MEMMAP) ||                          \
-    defined(DHRUTHIOS_TEST_PMM)
+    defined(DHRUTHIOS_TEST_PMM) || defined(DHRUTHIOS_TEST_DIRECTMAP)
 #include "kernel-tests.h"
 #endif
 
@@ -95,6 +95,12 @@ _Noreturn void kmain(void) {
 #ifdef DHRUTHIOS_TEST_PMM
     if (!pmm_tests_run()) {
         (void)serial_write("FAIL: allocator milestone\r\n");
+    }
+    halt_forever();
+#endif
+#ifdef DHRUTHIOS_TEST_DIRECTMAP
+    if (!direct_map_tests_run()) {
+        (void)serial_write("FAIL: direct-map milestone\r\n");
     }
     halt_forever();
 #endif

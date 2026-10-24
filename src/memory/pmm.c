@@ -56,3 +56,8 @@ bool pmm_free(struct page_allocator *a, uint64_t physical) {
     ++a->free;
     return true;
 }
+
+bool pmm_is_allocated(const struct page_allocator *a, uint64_t physical) {
+    return a && a->initialized && physical < PMM_LIMIT && physical % PMM_PAGE_SIZE == 0 &&
+           a->state[physical / PMM_PAGE_SIZE] == ALLOCATED;
+}

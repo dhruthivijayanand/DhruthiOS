@@ -79,3 +79,8 @@ subtotal is 15 VMs. See [memory-management.md](memory-management.md).
 The allocator suite test-pmm.ps1 adds two VMs (128/256 MiB), bringing check.ps1
 to 17 runs. It covers invalid operations, capacity boundaries, unique usable page
 allocation through exhaustion, and return/reuse of every page. See [physical-pages.md](physical-pages.md).
+
+The direct-map suite test-directmap.ps1 adds two VMs (128/256 MiB), bringing the
+complete suite to 19 runs. Arithmetic guards and ownership rejection precede
+full-byte read/write checks on two allocated pages with opposite patterns.
+Both pages are returned; no freed pointers are dereferenced. See [direct-map.md](direct-map.md).

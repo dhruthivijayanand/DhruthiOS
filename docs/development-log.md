@@ -249,3 +249,19 @@ Limitations: one caller, interrupts disabled, 1 GiB cap, no heap or page-content
 no protection against stale-pointer lifetime misuse. Normal and echo images stay separate.
 Lesson: allocating a physical address establishes ownership; it does not create a virtual mapping.
 
+## 2026-10-24 — Accessing allocated pages
+
+Added a Limine HHDM request and layout assertions. The address helper checks
+alignment, capacity, response presence/revision and addition overflow. The page
+pointer helper checks allocation ownership before using the trusted boot mapping.
+Two allocated pages were filled and read back byte by byte using distinct patterns
+and reversed patterns, then freed. No old pointer was dereferenced after free.
+
+Final check.ps1 passed all 19 QEMU runs. Direct-map evidence:
+build/directmap/test-7c2fe0d48acd4fbfa9c11ff745eede9b/boot-1.log and boot-2.log.
+No build or test failure occurred during this milestone. Existing features passed.
+
+Lesson: allocation, address translation and pointer lifetime are separate concerns.
+We reuse bootloader mappings; we do not yet manage page tables or isolate programs.
+The helper trusts Limine and does not prove arbitrary page-table mappings.
+Normal boot and the serial monitor still do not allocate pages.

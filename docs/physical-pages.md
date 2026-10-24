@@ -78,10 +78,12 @@ physical address not automatically safe to dereference? What would SMP require?
 
 Limitations: no concurrency, heap, contiguous multi-page allocations, page-table
 changes, ownership tokens or use-after-free prevention. A stale address can free a
-later allocation at the same address; clients must obey lifetime rules. No RAM
+later allocation at the same address; clients must obey lifetime rules. In this ownership-only suite, no RAM
 content tests or physical hardware validation. Integration into the monitor is pending.
 
 ## STEP 11 — GIT
 Milestone: Add checked physical page allocator and exhaustion tests.
 Use only the existing local Git identity and configured remote.
 Verified 2026-10-24: complete check.ps1 passed all 17 QEMU runs. Allocator logs: build/pmm/test-5508dae4de33450ab2cfeccfe5cad33e/boot-1.log and boot-2.log.
+
+Page-content access is now tested in the separate [direct-map milestone](direct-map.md).

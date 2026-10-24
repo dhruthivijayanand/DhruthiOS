@@ -15,4 +15,5 @@ struct page_allocator {
 bool pmm_init(struct page_allocator *allocator, const struct boot_memory_response *map);
 bool pmm_alloc(struct page_allocator *allocator, uint64_t *physical);
 bool pmm_free(struct page_allocator *allocator, uint64_t physical);
+bool pmm_is_allocated(const struct page_allocator *allocator, uint64_t physical);
 #endif

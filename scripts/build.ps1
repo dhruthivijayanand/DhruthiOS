@@ -1,6 +1,6 @@
 param(
     [string]$LlvmBin,
-   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap', 'pmm')][string]$Mode = 'normal'
+   [ValidateSet('normal', 'ud2', 'timer', 'timer-masked', 'echo', 'commands', 'memmap', 'pmm', 'directmap')][string]$Mode = 'normal'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -28,6 +28,7 @@ try {
     if ($Mode -eq 'commands') { $flags += '-DDHRUTHIOS_TEST_COMMANDS=1' }
     if ($Mode -eq 'memmap') { $flags += '-DDHRUTHIOS_TEST_MEMMAP=1' }
     if ($Mode -eq 'pmm') { $flags += '-DDHRUTHIOS_TEST_PMM=1' }
+    if ($Mode -eq 'directmap') { $flags += '-DDHRUTHIOS_TEST_DIRECTMAP=1' }
     if ($Mode -eq 'echo') { $flags += '-DDHRUTHIOS_TEST_ECHO=1' }
     if ($Mode -like 'timer*') { $flags += '-DDHRUTHIOS_TEST_TIMER=1' }
     if ($Mode -eq 'timer-masked') { $flags += '-DDHRUTHIOS_TIMER_MASKED=1' }
@@ -52,6 +53,12 @@ try {
         $sources += @{ Path = 'src/memory/memory_map.c'; Object = 'memory-map.o' }
         $sources += @{ Path = 'src/memory/pmm.c'; Object = 'pmm.o' }
         $sources += @{ Path = 'tests/kernel/pmm-test.c'; Object = 'pmm-test.o' }
+    }
+    if ($Mode -eq 'directmap') {
+        $sources += @{ Path = 'src/memory/memory_map.c'; Object = 'memory-map.o' }
+        $sources += @{ Path = 'src/memory/pmm.c'; Object = 'pmm.o' }
+        $sources += @{ Path = 'src/memory/direct_map.c'; Object = 'direct-map.o' }
+        $sources += @{ Path = 'tests/kernel/direct-map-test.c'; Object = 'direct-map-test.o' }
     }
     $objects = @()
     foreach ($source in $sources) {
