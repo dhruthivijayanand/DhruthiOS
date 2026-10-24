@@ -24,11 +24,11 @@ $env:QEMU_DIR = 'C:\Program Files\qemu'
 & ./scripts/check.ps1
 ```
 
-The check script runs 12 QEMU instances: 3 normal boots, 2 exception tests,
+The check script runs 15 QEMU instances: 3 normal boots, 2 exception tests,
 2 timer returns, 1 masked-timer control, 2 command-test boots (17 cases each),
-and 2 serial integration runs (14 scenarios each). VMs close automatically;
+2 serial integration runs (14 scenarios each), and 3 memory-map runs (20 validator cases each). VMs close automatically;
 logs stay in build/. The existing eight regressions and both new test suites
-passed separately on 2026-10-24.
+passed on 2026-10-24. The memory-map suite also passed at 128/256/512 MiB.
 
 To demonstrate the interactive monitor:
 
@@ -58,6 +58,7 @@ in Task Manager if necessary.
 | General exceptions | PARTIALLY IMPLEMENTED | Generic fallback and nested faults remain UNTESTED |
 | Command selection | IMPLEMENTED | 17 automated cases per memory size |
 | Serial kernel monitor | PROTOTYPE | 14 automated serial scenarios per memory size |
+| Read-only boot memory map | IMPLEMENTED in memmap image | 20 validator cases and independent totals at 128/256/512 MiB |
 | Memory allocator and limited C++ | PLANNED | Not implemented |
 | User space, scheduling, filesystem, networking | FUTURE WORK | Not implemented |
 
@@ -84,12 +85,13 @@ user space. No hosted runtime or dynamic allocation is used.
 - [Exceptions](docs/interrupts.md) and [timer](docs/timer.md).
 - [Command contracts, demo and automated evidence](docs/commands.md).
 - [Existing regression tests](docs/testing.md).
+- [Memory map and allocation roadmap](docs/memory-management.md).
 - [Development log](docs/development-log.md).
 - [UEFI/Limine decision](docs/technical-decisions/0001-uefi-limine.md).
 
 Validation is limited to QEMU's PC model with TCG. There is no real-hardware
 support claim, installer, bootable ISO, or production reliability claim.
-Next: inspect the boot memory map and implement a physical page allocator.
+Next: use the validated boot memory map to implement a physical page allocator.
 
 ## Dependencies
 

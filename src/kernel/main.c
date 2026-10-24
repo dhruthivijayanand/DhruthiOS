@@ -1,10 +1,12 @@
 #include "commands.h"
 #include "exceptions.h"
+#include "memory_map.h"
 #include "serial.h"
 #include "timer.h"
 #include <stdbool.h>
 #include <stdint.h>
-#if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) || defined(DHRUTHIOS_TEST_COMMANDS)
+#if defined(DHRUTHIOS_TEST_UD2) || defined(DHRUTHIOS_TEST_TIMER) ||                                \
+    defined(DHRUTHIOS_TEST_COMMANDS) || defined(DHRUTHIOS_TEST_MEMMAP)
 #include "kernel-tests.h"
 #endif
 
@@ -79,6 +81,14 @@ _Noreturn void kmain(void) {
     if (!command_tests_run()) {
         (void)serial_write("FAIL: command tests failed\r\n");
     }
+    halt_forever();
+#endif
+#ifdef DHRUTHIOS_TEST_MEMMAP
+    if (!memory_map_tests_run() || !memory_map_report()) {
+        (void)serial_write("FAIL: memory-map milestone\r\n");
+        halt_forever();
+    }
+    (void)serial_write("PASS: memory map inspected; no RAM allocated\r\n");
     halt_forever();
 #endif
 #ifdef DHRUTHIOS_TEST_ECHO

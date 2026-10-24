@@ -11,4 +11,5 @@ $QemuDir = Resolve-QemuDirectory $QemuDir
 & "$PSScriptRoot/test-timer.ps1" -LlvmBin $LlvmBin -QemuDir $QemuDir
 & "$PSScriptRoot/test-commands.ps1" -LlvmBin $LlvmBin -QemuDir $QemuDir
 & "$PSScriptRoot/test-echo.ps1" -LlvmBin $LlvmBin -QemuDir $QemuDir
-Write-Output 'PASS: all 12 QEMU runs completed (8 regression, 2 command, 2 serial).'
+& "$PSScriptRoot/test-memmap.ps1" -LlvmBin $LlvmBin -QemuDir $QemuDir
+Write-Output 'PASS: all 15 QEMU runs completed (8 regression, 2 command, 2 serial, 3 memory-map).'

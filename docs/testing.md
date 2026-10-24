@@ -71,3 +71,7 @@ size using a local Windows named pipe). Both build isolated images. This brings
 the suite to twelve QEMU instances. See [commands.md](commands.md) for exact
 coverage, current evidence and limitations. Serial waits have a 30-second
 per-response deadline, plus bounded connection and write timeouts.
+
+The suite also includes test-memmap.ps1: three memory-map boots at 128/256/512 MiB,
+20 validator checks per boot, and independent checks of usable totals. The aggregate
+suite now schedules 15 VMs. See [memory-management.md](memory-management.md).

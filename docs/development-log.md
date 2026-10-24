@@ -211,3 +211,25 @@ a read was pending; asynchronous mode fixed the test transport.
 No allocator, C++, scheduler or user isolation added. Monitor remains a
 prototype with polling and unsupported terminal escape sequences.
 See commands.md for contracts, reproduction and evidence.
+
+## 2026-10-24 — Read-only boot memory map
+
+Added the Limine memory-map request only to a separate memmap image. Validated
+the response before reporting ranges, usable bytes and page counts. No allocator
+or writes through physical addresses were added. The five missing tracked test
+files were restored from HEAD with explicit user approval.
+
+Verified 20 synthetic validator checks at each of 128/256/512 MiB.
+Reported usable bytes: 82255872, 216473600, 484909056 respectively.
+Host-side sums of printed usable ranges matched every summary.
+Logs: build/memmap/test-a432b70ceff446db9cdb7ef74fdcc5fa/.
+Existing complete 12-run regression suite also passed; normal logs:
+build/test-fc46149419ae4d94b1c7c4a04aab5d2b/.
+
+Failure: the first 64 MiB VM stopped in Limine with allocator exhaustion before
+kernel entry. Kept the failing log at
+build/memmap/test-0fd0230e99ea453b9325efb15a331080/ and used supported larger
+test sizes. This is not a claimed kernel fix or proof of 64 MiB support.
+
+See memory-management.md for the protocol sources, contracts, policies,
+test evidence, and remaining allocation work.
